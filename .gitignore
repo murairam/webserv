@@ -2,6 +2,7 @@
 1.cpp
 1.hpp
 test
+*.pdf
 
 # Prerequisites
 *.d
