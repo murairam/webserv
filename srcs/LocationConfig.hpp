@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 14:14:10 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/13 14:46:33 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/13 18:49:01 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,9 +43,6 @@ class	LocationConfig
 		const std::string	&getPathPrefix(void) const;
 		int					getAllowedMethods(void) const;
 		const std::string	&getRoot(void) const;
-
-		const std::vector<std::string>	&getIndexFiles(void) const;
-
 		bool				getAutoindex(void) const;
 		bool				getUploadEnabled(void) const;
 		const std::string	&getUploadPath(void) const;
@@ -54,6 +51,7 @@ class	LocationConfig
 		const std::string	&getRedirectTarget(void) const;
 		long				getClientMax(void) const;
 		int					getPriority(void) const;
+		const std::vector<std::string>	&getIndexFiles(void) const;
 };
 
 #endif
