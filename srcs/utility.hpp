@@ -1,23 +1,25 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
+/*   utility.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 11:43:07 by yanli            ###   ########.fr       */
+/*   Created: 2025/09/14 15:34:07 by yanli             #+#    #+#             */
+/*   Updated: 2025/09/14 15:41:58 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-# include "_headers.hpp"
+#ifndef UTILITY_HPP
+# define UTILITY_HPP
 
-int	main(int argc, char **argv, char **envp)
-{
-	if (!envp || !*envp || !**envp)
-	{
-		std::cerr<<ERROR_MSG_INVALID_ENVP<<std::endl;
-		return (1);
-	}
-	return (0);
-}
+# include "_headers.hpp"
+# include "SysError.hpp"
+
+/* returns the file size */
+off_t	getFileSize(const std::string &path);
+
+/* tells you if the path is a directory */
+bool	isDirectory(const std::string &path);
+
+#endif

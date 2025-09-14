@@ -1,23 +1,19 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
+/*   msg.hpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 11:43:07 by yanli            ###   ########.fr       */
+/*   Created: 2025/09/14 11:41:03 by yanli             #+#    #+#             */
+/*   Updated: 2025/09/14 11:41:56 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-# include "_headers.hpp"
+#ifndef MSG_HPP
+# define MSG_HPP
 
-int	main(int argc, char **argv, char **envp)
-{
-	if (!envp || !*envp || !**envp)
-	{
-		std::cerr<<ERROR_MSG_INVALID_ENVP<<std::endl;
-		return (1);
-	}
-	return (0);
-}
+# define ERROR_MSG_INVALID_ENVP "WHAT'S WRONG WITH YOU ? PLAYING THAT ENV -I TRICK WITH YOUR DADDY ?"
+
+
+#endif

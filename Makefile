@@ -6,7 +6,7 @@
 #    By: yanli <yanli@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/09/14 00:26:59 by yanli            ###   ########.fr        #
+#    Updated: 2025/09/14 15:47:45 by yanli            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,13 +14,14 @@ NAME			= webserv
 
 CXX				= c++
 
-CXXFLAGS		= -Wall -Wextra -Werror -std=c++98 
+CXXFLAGS		= -Wall -Wextra -Werror -std=c++98
 
 SRCS_DIR		= ./srcs
 
 SRCS			= $(addprefix $(SRCS_DIR)/, main.cpp, Endpoint.cpp, ErrorPagesconfig.cpp, \
 					LocationConfig.cpp, ServerConfig.cpp, CgiMapping.cpp, SysError.cpp \
-					ServerTable.cpp, GlobalConfig.cpp, FD.cpp)
+					ServerTable.cpp, GlobalConfig.cpp, FD.cpp, Pipe.cpp, Resolver.cpp \
+					Socket.cpp, Directory.cpp, Process.cpp, utility.cpp)
 
 OBJS			= $(SRCS:.cpp=.o)
 

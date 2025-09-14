@@ -1,23 +1,37 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
+/*   Pipe.hpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 11:43:07 by yanli            ###   ########.fr       */
+/*   Created: 2025/09/14 11:45:57 by yanli             #+#    #+#             */
+/*   Updated: 2025/09/14 11:48:53 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-# include "_headers.hpp"
+#ifndef PIPE_HPP
+# define PIPE_HPP
 
-int	main(int argc, char **argv, char **envp)
+# include "_headers.hpp"
+# include "FD.hpp"
+
+class	Pipe
 {
-	if (!envp || !*envp || !**envp)
-	{
-		std::cerr<<ERROR_MSG_INVALID_ENVP<<std::endl;
-		return (1);
-	}
-	return (0);
-}
+	private:
+		FD		_r;
+		FD		_w;
+
+	public:
+		Pipe(void);
+		Pipe(const Pipe &other);
+		Pipe	&operator=(const Pipe &other);
+		~Pipe(void);
+
+		FD	&readEnd(void);
+		FD	&writeEnd(void);
+		const FD	&readEnd(void) const;
+		const FD	&writeEnd(void) const;
+};
+
+#endif

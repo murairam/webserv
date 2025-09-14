@@ -1,23 +1,35 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
+/*   utility.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 11:43:07 by yanli            ###   ########.fr       */
+/*   Created: 2025/09/14 15:34:00 by yanli             #+#    #+#             */
+/*   Updated: 2025/09/14 15:41:52 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-# include "_headers.hpp"
+#include "utility.hpp"
 
-int	main(int argc, char **argv, char **envp)
+off_t	getFileSize(const std::string &path)
 {
-	if (!envp || !*envp || !**envp)
-	{
-		std::cerr<<ERROR_MSG_INVALID_ENVP<<std::endl;
-		return (1);
-	}
-	return (0);
+	struct stat	st;
+	int			r;
+
+	r = stat(path.c_str(), &st);
+	if (r)
+		throw SysError("stat failed: " + path, errno);
+	return (st.st_size);
+}
+
+bool	isDirectory(const std::string &path)
+{
+	struct stat	st;
+	int			r;
+
+	r = stat(path.c_str(), &st);
+	if (r)
+		return (false);
+	return (S_ISDIR(st.st_mode) != 0);
 }
