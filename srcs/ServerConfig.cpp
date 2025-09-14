@@ -5,70 +5,103 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/13 14:39:02 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/13 17:56:55 by yanli            ###   ########.fr       */
+/*   Created: 2025/09/14 19:37:19 by yanli             #+#    #+#             */
+/*   Updated: 2025/09/14 20:38:59 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ServerConfig.hpp"
+ServerConfig::ServerConfig(void)
+:_server_name(), _listeners(), _client_max_body_size(-1), _error_pages(),
+_index_fallback(), _autoindex(-1), _locations()
+{
 
-ServerConfig::ServerConfig(void) {}
+}
 
 ServerConfig::ServerConfig(const ServerConfig &other)
-:_listeners(other._listeners), _server_name(other._server_name),
+:_server_name(other._server_name), _listeners(other._listeners),
 _client_max_body_size(other._client_max_body_size),
-_error_pages(other._error_pages), _locations(other._locations),
-_index_fallback(other._index_fallback),
-_autoindex_fallback(other._autoindex_fallback) {}
+_error_pages(other._error_pages), _index_fallback(other._index_fallback),
+_autoindex(other._autoindex), _locations(other._locations) {}
 
 ServerConfig	&ServerConfig::operator=(const ServerConfig &other)
 {
 	if (this != &other)
 	{
-		_listeners = other._listeners;
 		_server_name = other._server_name;
+		_listeners = other._listeners;
 		_client_max_body_size = other._client_max_body_size;
 		_error_pages = other._error_pages;
-		_locations = other._locations;
 		_index_fallback = other._index_fallback;
-		_autoindex_fallback = other._autoindex_fallback;
+		_autoindex = other._autoindex;
+		_locations = other._locations;
 	}
-	return (*this);	
+	return (*this);
 }
 
 ServerConfig::~ServerConfig(void) {}
 
-const std::vector<Endpoint>	&ServerConfig::getListeners(void) const
-{
-	return this->_listeners;
-}
-
 const std::string	&ServerConfig::getServerName(void) const
 {
-	return this->_server_name;
+	return (_server_name);
 }
-
-long	ServerConfig::getClientMaxBodySize(void) const
+const std::vector<Endpoint>	&ServerConfig::getListeners(void) const
 {
-	return this->_client_max_body_size;
+	return (_listeners);
 }
-
-const ErrorPagesConfig	&ServerConfig::getErrorPages(void) const
-{
-	return this->_error_pages;
-}
-
 const std::vector<LocationConfig>	&ServerConfig::getLocations(void) const
 {
-	return this->_locations;
+	return (_locations);
 }
 
-const std::vector<std::string>	&ServerConfig::getIndexFallback(void) const
+/*	Longest prefix matach
+*/
+const LocationConfig	*ServerConfig::matchLocation(const std::string &path) const
 {
-	return this->_index_fallback;
+	if (path.empty())
+		return (0);
+		
+	size_t					best_len = 0;
+	size_t					i = 0;
+	const LocationConfig	*best = 0;
+	while (i < _locations.size())
+	{
+		const std::string	&prefix = _locations[i].getPathPrefix();
+		const size_t		plen = prefix.size();
+
+		if (!plen || plen > path.size())
+			continue;
+		if (!path.compare(0, plen, prefix))
+		{
+			if (plen > best_len)
+			{
+				best = &_locations[i];
+				best_len = plen;
+			}
+		}
+		i++;
+	}
+	return (best);
 }
 
-int	ServerConfig::getAutoindexFallback(void) const
+long	ServerConfig::getBodyLimit(const LocationConfig *loc) const
 {
-	return this->_autoindex_fallback;
+	if (!loc || loc->getClientBodyLimit() < 0)
+		return (_client_max_body_size);
+	return (loc->getClientBodyLimit());
+}
+
+/*	Error page for 404 is guaranteed to be existent;
+	that emptystr is there to avoid compiler warning
+*/
+const std::string	&ServerConfig::getErrorPage(int code) const
+{
+	std::map<int,std::string>::const_iterator	it = _error_pages.find(code);
+	if (it != _error_pages.end())
+		return (it->second);
+	std::map<int,std::string>::const_iterator	it2 = _error_pages.find(404);
+	if (it2 != _error_pages.end())
+		return (it2->second);
+	static const std::string	emptystr;
+	return (emptystr);
 }

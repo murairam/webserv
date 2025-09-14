@@ -6,17 +6,14 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 14:14:10 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/13 18:49:01 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/14 20:15:03 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef LOCATIONCONFIG_HPP
 # define LOCATIONCONFIG_HPP
 
-# include <string>
-# include <vector>
-# include <stdexcept>
-# include "CgiMapping.hpp"
+# include "_headers.hpp"
 
 class	LocationConfig
 {
@@ -28,7 +25,6 @@ class	LocationConfig
 		bool			_autoindex;
 		bool			_upload_enabled;
 		std::string		_upload_path;
-		CgiMapping		_cgi;
 		int				_redirect_code;
 		std::string		_redirect_target;
 		long			_client_max_body_size_override;
@@ -46,10 +42,10 @@ class	LocationConfig
 		bool				getAutoindex(void) const;
 		bool				getUploadEnabled(void) const;
 		const std::string	&getUploadPath(void) const;
-		const CgiMapping	&getCgi(void) const;
+		std::string			getCgi(std::string ext) const;
 		int					getRedirectCode(void) const;
 		const std::string	&getRedirectTarget(void) const;
-		long				getClientMax(void) const;
+		long				getClientBodyLimit(void) const;
 		int					getPriority(void) const;
 		const std::vector<std::string>	&getIndexFiles(void) const;
 };
