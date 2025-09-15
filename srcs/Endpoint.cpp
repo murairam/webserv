@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:14:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/13 23:02:47 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/15 12:25:55 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 
 Endpoint::Endpoint(void):_host(), _port(0), _is_ipv6(false) {}
 
-Endpoint::Endpoint(std::string host, int port, bool is_ipv6)
+Endpoint::Endpoint(const std::string &host, int port, bool is_ipv6)
 :_host(host), _port(port), _is_ipv6(is_ipv6) {}
 
 Endpoint::Endpoint(const Endpoint &other)

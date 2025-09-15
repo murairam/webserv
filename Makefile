@@ -6,7 +6,7 @@
 #    By: yanli <yanli@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/09/14 21:04:21 by yanli            ###   ########.fr        #
+#    Updated: 2025/09/15 12:34:14 by yanli            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,14 +14,15 @@ NAME			= webserv
 
 CXX				= c++
 
-CXXFLAGS		= -Wall -Wextra -Werror -std=c++98 
+CXXFLAGS		= -Wall -Wextra -std=c++98
 
 SRCS_DIR		= ./srcs
 
-SRCS			= $(addprefix $(SRCS_DIR)/, main.cpp, Endpoint.cpp, \
-					LocationConfig.cpp, ServerConfig.cpp, SysError.cpp \
-					FD.cpp, Pipe.cpp, Resolver.cpp ConfigLoader.cpp \
-					Socket.cpp, Directory.cpp, Process.cpp, utility.cpp)
+SRCS_FILES		= main.cpp Endpoint.cpp LocationConfig.cpp ServerConfig.cpp \
+				SysError.cpp FD.cpp Pipe.cpp Resolver.cpp Socket.cpp \
+				Directory.cpp Process.cpp utility.cpp
+
+SRCS			= $(addprefix $(SRCS_DIR)/,$(SRCS_FILES))
 
 OBJS			= $(SRCS:.cpp=.o)
 
@@ -35,7 +36,7 @@ $(NAME): $(OBJS)
 	$(CXX) -I$(SRCS_DIR) $(OBJS) -o $(NAME)
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -I$(SRCS_DIR) -MMD -MP -c $< -c $@
+	$(CXX) $(CXXFLAGS) -I$(SRCS_DIR) -MMD -MP -c $< -o $@
 
 -include $(DEPS)
 
