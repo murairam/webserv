@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: yanli <yanli@student.42.fr>                +#+  +:+       +#+         #
+#    By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/09/15 12:34:14 by yanli            ###   ########.fr        #
+#    Updated: 2025/09/15 15:47:27 by mmiilpal         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,34 +14,47 @@ NAME			= webserv
 
 CXX				= c++
 
-CXXFLAGS		= -Wall -Wextra -std=c++98
+# Detect platform
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+	PLATFORM_FLAGS = -D__APPLE__
+else
+	PLATFORM_FLAGS = -D__LINUX__
+endif
+
+CXXFLAGS		= -Wall -Wextra -Werror -std=c++98 $(PLATFORM_FLAGS)
 
 SRCS_DIR		= ./srcs
 
-SRCS_FILES		= main.cpp Endpoint.cpp LocationConfig.cpp ServerConfig.cpp \
-				SysError.cpp FD.cpp Pipe.cpp Resolver.cpp Socket.cpp \
-				Directory.cpp Process.cpp utility.cpp
+SRCS_FILES 		= 	main.cpp Endpoint.cpp LocationConfig.cpp ServerConfig.cpp \
+					SysError.cpp FD.cpp Pipe.cpp Resolver.cpp Socket.cpp \
+					Directory.cpp Process.cpp utility.cpp ConfigLoader.cpp
 
 SRCS			= $(addprefix $(SRCS_DIR)/,$(SRCS_FILES))
 
-OBJS			= $(SRCS:.cpp=.o)
+OBJDIR = objs
 
-DEPS			= $(OBJS:.o=.d)
+OBJS = $(addprefix $(OBJDIR)/, $(SRCS_FILES:.cpp=.o))
+
+DEPS = $(OBJS:.o=.d)
 
 .PHONY: all clean fclean re z
 
-all: $(NAME)
+all: $(OBJDIR) $(NAME)
 
 $(NAME): $(OBJS)
 	$(CXX) -I$(SRCS_DIR) $(OBJS) -o $(NAME)
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -I$(SRCS_DIR) -MMD -MP -c $< -o $@
+$(OBJDIR)/%.o: $(SRCS_DIR)/%.cpp
+				$(CXX) $(CXXFLAGS) -I$(SRCS_DIR) -MMD -MP -c $< -o $@
+
+$(OBJDIR):
+		mkdir -p $(OBJDIR)
 
 -include $(DEPS)
 
 clean:
-	rm -f $(DEPS) $(OBJS)
+	rm -rf $(DEPS) $(OBJS) $(OBJDIR)
 
 fclean: clean
 	rm -f $(NAME)

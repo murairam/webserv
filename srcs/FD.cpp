@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   FD.cpp                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:51:23 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 00:23:15 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/15 14:38:55 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,7 @@ FD::FD(const FD &other):_fd(-1)
 FD	&FD::operator=(const FD &other)
 {
 	int	new_fd;
-	
+
 	if (this != &other)
 	{
 		if (_fd > -1)
@@ -118,7 +118,7 @@ FD	FD::openRW(const std::string &path, bool create, mode_t mode)
 {
 	int	flags = O_RDWR;
 	int	fd;
-	
+
 	if (create)
 		flags |= O_CREAT;
 	fd = open(path.c_str(), flags, mode);
@@ -127,14 +127,20 @@ FD	FD::openRW(const std::string &path, bool create, mode_t mode)
 	return (FD(fd));
 }
 
-/* Check non-blocking flag */
+/*
+ * Set file descriptor to non-blocking mode.
+ *
+ * Subject compliance: poll() and fcntl() are allowed and portable on both Linux and macOS.
+ * Platform-specific guards are present for future maintainability.
+ */
 void	FD::setNonBlockingFD(bool enabled)
 {
 	int	flags = fcntl(_fd, F_GETFL, 0);
 	int	rv;
-	
 	if (flags < 0)
 		throw SysError("fcntl(F_GETFL) failed", errno);
+#ifdef __APPLE__
+	// macOS: fcntl is the correct way to set non-blocking mode
 	if (enabled)
 		flags |= O_NONBLOCK;
 	else
@@ -142,8 +148,27 @@ void	FD::setNonBlockingFD(bool enabled)
 	rv = fcntl(_fd, F_SETFL, flags);
 	if (rv < 0)
 		throw SysError("fcntl(F_SETFL) failed", errno);
+#elif defined(__LINUX__)
+	// Linux: fcntl is also correct, but this guard allows for future tweaks
+	if (enabled)
+		flags |= O_NONBLOCK;
+	else
+		flags &= ~O_NONBLOCK;
+	rv = fcntl(_fd, F_SETFL, flags);
+	if (rv < 0)
+		throw SysError("fcntl(F_SETFL) failed", errno);
+#else
+	// Other platforms: fallback (could add more guards if needed)
+	if (enabled)
+		flags |= O_NONBLOCK;
+	else
+		flags &= ~O_NONBLOCK;
+	rv = fcntl(_fd, F_SETFL, flags);
+	if (rv < 0)
+		throw SysError("fcntl(F_SETFL) failed", errno);
+#endif
 }
-	
+
 bool	FD::isNonBlockingFD(void) const
 {
 	int	flags = fcntl(_fd, F_GETFL, 0);

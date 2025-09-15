@@ -3,32 +3,34 @@
 /*                                                        :::      ::::::::   */
 /*   LocationConfig.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 14:14:01 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 20:15:11 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/15 14:49:05 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "LocationConfig.hpp"
 
+
 LocationConfig::LocationConfig(void)
-: _path_prefix(), _allowed_methods(0), _root(), _index_files(), _autoindex(false),
-_upload_enabled(false), _upload_path(), _redirect_code(0), _redirect_target(),
-_client_max_body_size_override(-1), _priority(0) {}
+		: _path_prefix(), _allowed_methods(0), _root(), _index_files(), _autoindex(false),
+			_upload_enabled(false), _upload_path(), _redirect_code(0), _redirect_target(),
+			_client_max_body_size_override(-1), _priority(0), _cgiExecutables() {}
+
 
 LocationConfig::LocationConfig(const LocationConfig &other)
-:_path_prefix(other._path_prefix), _allowed_methods(other._allowed_methods),
-_root(other._root), _index_files(other._index_files), _autoindex(other._autoindex),
-_upload_enabled(other._upload_enabled), _upload_path(other._upload_path),
-_redirect_code(other._redirect_code),
-_redirect_target(other._redirect_target), _client_max_body_size_override(other._client_max_body_size_override),
-_priority(other._priority) {}
+		: _path_prefix(other._path_prefix), _allowed_methods(other._allowed_methods),
+			_root(other._root), _index_files(other._index_files), _autoindex(other._autoindex),
+			_upload_enabled(other._upload_enabled), _upload_path(other._upload_path),
+			_redirect_code(other._redirect_code), _redirect_target(other._redirect_target),
+			_client_max_body_size_override(other._client_max_body_size_override),
+			_priority(other._priority), _cgiExecutables(other._cgiExecutables) {}
 
-LocationConfig	&LocationConfig::operator=(const LocationConfig &other)
+
+LocationConfig &LocationConfig::operator=(const LocationConfig &other)
 {
-	if (this != &other)
-	{
+	if (this != &other) {
 		_path_prefix = other._path_prefix;
 		_allowed_methods = other._allowed_methods;
 		_root = other._root;
@@ -40,8 +42,9 @@ LocationConfig	&LocationConfig::operator=(const LocationConfig &other)
 		_redirect_target = other._redirect_target;
 		_client_max_body_size_override = other._client_max_body_size_override;
 		_priority = other._priority;
+		_cgiExecutables = other._cgiExecutables;
 	}
-	return (*this);
+	return *this;
 }
 
 LocationConfig::~LocationConfig(void) {}
@@ -70,13 +73,20 @@ const std::string	&LocationConfig::getUploadPath(void) const
 int	LocationConfig::getRedirectCode(void) const
 { return this->_redirect_code; }
 
-std::string	LocationConfig::getCgi(std::string ext) const
-{
-	if (ext == ".php")
-		return (std::string("/usr/bin/php-cgi"));
-	if (ext == ".rb")
-		return (std::string("/usr/bin/ruby"));
-	return (std::string());
+
+std::string LocationConfig::getCgi(const std::string &ext) const {
+	std::map<std::string, std::string>::const_iterator it = _cgiExecutables.find(ext);
+	if (it != _cgiExecutables.end())
+		return it->second;
+	return std::string();
+}
+
+void LocationConfig::setCgiExecutable(const std::string &ext, const std::string &exec) {
+	_cgiExecutables[ext] = exec;
+}
+
+const std::map<std::string, std::string> &LocationConfig::getCgiExecutables() const {
+	return _cgiExecutables;
 }
 
 const std::string	&LocationConfig::getRedirectTarget(void) const
