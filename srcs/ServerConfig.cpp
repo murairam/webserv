@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:19 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 20:38:59 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/15 16:09:08 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -104,4 +104,39 @@ const std::string	&ServerConfig::getErrorPage(int code) const
 		return (it2->second);
 	static const std::string	emptystr;
 	return (emptystr);
+}
+
+void	ServerConfig::setServerName(std::string name)
+{
+	_server_name = name;
+}
+
+void	ServerConfig::addEndpoint(std::string data)
+{
+	std::string::size_type	pos = data.find(':');
+	if (pos == std::string::npos)
+		throw std::runtime_error("Invalid endpoint has been ignored: " + data);
+	std::string	host = data.substr(0, pos);
+	int			port = std::atoi(data.substr(pos + 1).c_str());
+
+	if (port < 0 || port > 65536)
+		throw std::runtime_error("Invalid endpoint has been ignored: " + data);
+	_listeners.push_back(Endpoint(host, port));
+}
+
+void	ServerConfig::setBodySize(long n, char c)
+{
+	if (c == 'K')
+		_client_max_body_size = 1024 * n;
+	else if (c == 'M')
+		_client_max_body_size = 1024 * 1024 * n;
+	else if (c == 'G')
+		_client_max_body_size = 1024 * 1024 * 1024 * n;
+	else
+		_client_max_body_size = -1;
+}
+
+void	ServerConfig::addErrorPage(int err_code, std::string err_page)
+{
+	_error_pages[err_code] = err_page;
 }

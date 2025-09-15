@@ -6,7 +6,7 @@
 #    By: yanli <yanli@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/09/15 12:34:14 by yanli            ###   ########.fr        #
+#    Updated: 2025/09/15 16:59:46 by yanli            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,13 +14,13 @@ NAME			= webserv
 
 CXX				= c++
 
-CXXFLAGS		= -Wall -Wextra -std=c++98
+CXXFLAGS		= -Wall -Wextra -std=c++98 -D_DEBUG
 
 SRCS_DIR		= ./srcs
 
 SRCS_FILES		= main.cpp Endpoint.cpp LocationConfig.cpp ServerConfig.cpp \
 				SysError.cpp FD.cpp Pipe.cpp Resolver.cpp Socket.cpp \
-				Directory.cpp Process.cpp utility.cpp
+				Directory.cpp Process.cpp utility.cpp ConfigLoader.cpp
 
 SRCS			= $(addprefix $(SRCS_DIR)/,$(SRCS_FILES))
 

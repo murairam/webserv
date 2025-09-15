@@ -6,19 +6,19 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:14:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/15 12:25:55 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/15 15:50:09 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Endpoint.hpp"
 
-Endpoint::Endpoint(void):_host(), _port(0), _is_ipv6(false) {}
+Endpoint::Endpoint(void):_host(), _port(0) {}
 
-Endpoint::Endpoint(const std::string &host, int port, bool is_ipv6)
-:_host(host), _port(port), _is_ipv6(is_ipv6) {}
+Endpoint::Endpoint(std::string host, int port)
+:_host(host), _port(port) {}
 
 Endpoint::Endpoint(const Endpoint &other)
-:_host(other._host), _port(other._port), _is_ipv6(other._is_ipv6) {}
+:_host(other._host), _port(other._port) {}
 
 Endpoint &Endpoint::operator=(const Endpoint &other)
 {
@@ -26,7 +26,6 @@ Endpoint &Endpoint::operator=(const Endpoint &other)
 	{
 		_host = other._host;
 		_port = other._port;
-		_is_ipv6 = other._is_ipv6;
 	}
 	return (*this);
 }
@@ -43,7 +42,11 @@ int	Endpoint::getPort(void) const
 	return (_port);
 }
 
-bool	Endpoint::getIPV6status(void) const
+void	Endpoint::setHost(std::string host)
 {
-	return (_is_ipv6);
+	_host = host;
+}
+void	Endpoint::setPort(int port)
+{
+	_port = port;
 }

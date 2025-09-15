@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:18:53 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 11:40:56 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/15 15:57:55 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@
 # include <utility>
 # include <fstream>
 # include <cstring>
+# include <cstdlib>
 
 # include <errno.h>
 # include <sys/types.h>
