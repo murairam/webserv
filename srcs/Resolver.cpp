@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 11:55:39 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 12:40:26 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 12:26:39 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,13 +50,13 @@ Resolver::resolver(void) const
 	request.ai_family = _family;
 	request.ai_socktype = _socket_type;
 	request.ai_flags = _flags;
-	rv = getaddrinfo(_node.empty() ? 0 : _node.c_str(),
+	rv = ::getaddrinfo(_node.empty() ? 0 : _node.c_str(),
 					_service.empty() ? 0 : _service.c_str(),
 					&request, &result);
 	if (rv)
 	{
 		std::string	msg("getaddrinfo failed: ");
-		msg += gai_strerror(rv);
+		msg += ::gai_strerror(rv);
 		throw SysError(msg, 0);
 	}
 	curr = result;
@@ -81,7 +81,7 @@ Resolver::resolver(void) const
 		}
 		curr = curr->ai_next;
 	}
-	freeaddrinfo(result);
+	::freeaddrinfo(result);
 	return (data);
 }
 

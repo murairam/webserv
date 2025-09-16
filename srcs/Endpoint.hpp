@@ -6,14 +6,14 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:14:15 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/15 15:50:28 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 08:58:12 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef ENDPOINT_HPP
 # define ENDPOINT_HPP
 
-# include <string>
+# include "_headers.hpp"
 
 /*	Endpoint records listen host:port configuration (like 0.0.0.0:443)
 */
@@ -34,6 +34,10 @@ class	Endpoint
 		int					getPort(void) const;
 		void				setHost(std::string host);
 		void				setPort(int port);
+
+#ifdef	_DEBUG
+		void	debug(void) const;
+#endif
 };
 
 #endif

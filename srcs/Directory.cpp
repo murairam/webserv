@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:02 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 14:40:53 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 12:31:08 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,9 +14,9 @@
 
 Directory::Directory(void): _dir(0), _path_cached() {}
 
-Directory::Directory(const std::string &path): _dir(0), _path_cached()
+Directory::Directory(std::string path): _dir(0), _path_cached()
 {
-	openDir(path);
+	ft_opendir(path);
 }
 
 Directory::Directory(const Directory &other)
@@ -24,7 +24,7 @@ Directory::Directory(const Directory &other)
 {
 	if (other._dir)
 	{
-		_dir = opendir(_path_cached.c_str());
+		_dir = ::opendir(_path_cached.c_str());
 		if (!_dir)
 			throw SysError("opendir failed: " + _path_cached, errno);
 	}
@@ -35,12 +35,12 @@ Directory	&Directory::operator=(const Directory &other)
 	if (this != &other)
 	{
 		if (_dir)
-			closedir(_dir);
+			::closedir(_dir);
 		_dir = 0;
 		_path_cached = other._path_cached;
 		if (other._dir)
 		{
-			_dir = opendir(_path_cached.c_str());
+			_dir = ::opendir(_path_cached.c_str());
 			if (!_dir)
 				throw SysError("opendir failed: " + _path_cached, errno);
 		}
@@ -51,27 +51,27 @@ Directory	&Directory::operator=(const Directory &other)
 Directory::~Directory(void)
 {
 	if (_dir)
-		closedir(_dir);
+		::closedir(_dir);
 }
 bool	Directory::isOpen(void) const
 {
 	return (_dir != 0);
 }
 
-void	Directory::openDir(const std::string &path)
+void	Directory::ft_opendir(const std::string &path)
 {
 	if (_dir)
-		closedir(_dir);
-	_dir = opendir(path.c_str());
+		::closedir(_dir);
+	_dir = ::opendir(path.c_str());
 	if (!_dir)
 		throw SysError("opendir failed: " + path, errno);
 	_path_cached = path;
 }
 
-void	Directory::closeDir(void)
+void	Directory::ft_closedir(void)
 {
 	if (_dir)
-		closedir(_dir);
+		::closedir(_dir);
 	_dir = 0;
 }
 
@@ -82,7 +82,7 @@ std::string	Directory::nextEntry(void)
 	if (_dir)
 		throw SysError("readdir on closed DIR*", EBADF);
 	errno = 0;
-	entry = readdir(_dir);
+	entry = ::readdir(_dir);
 	if (!entry)
 	{
 		if (errno)

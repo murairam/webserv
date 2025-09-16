@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:29 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/15 16:14:40 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:22:09 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,6 @@ class	ServerConfig
 		long						_client_max_body_size;	/* default is -1, -1 = unlimited */
 		std::map<int,std::string>	_error_pages;
 		std::vector<std::string>	_index_fallback;
-		int							_autoindex;	/* -1 if unset, 0 if disabled, 1 if enabled*/
 		std::vector<LocationConfig>	_locations;
 	public:
 		ServerConfig(void);
@@ -45,6 +44,10 @@ class	ServerConfig
 		void	setBodySize(long n, char c);
 		void	addErrorPage(int err_code, std::string err_page);
 		void	addLocation(LocationConfig lc);
+
+#ifdef	_DEBUG
+		void	debug(void) const;
+#endif
 };
 
 #endif

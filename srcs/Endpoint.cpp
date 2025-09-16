@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:14:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/15 15:50:09 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 08:39:13 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,3 +50,10 @@ void	Endpoint::setPort(int port)
 {
 	_port = port;
 }
+
+#ifdef	_DEBUG
+void	Endpoint::debug(void) const
+{
+	std::cout<<"Endpoint debug info: host: "<<_host<<", port: "<<_port<<std::endl;
+}
+#endif

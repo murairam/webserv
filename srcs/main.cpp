@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/15 16:34:25 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:24:28 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,11 +24,16 @@ int	main(int argc, char **argv, char **envp)
 			return (1);
 		}
 		if (argc == 1)
-		{
 			ConfigLoader	cfg;
-		}
 		else
+		{
 			ConfigLoader	cfg(argv[1]);
+#ifdef	_DEBUG
+			cfg.debug();
+#endif
+			if (cfg.selfcheck())
+				return (2);
+		}
 	}
 	catch (const std::exception &e)
 	{

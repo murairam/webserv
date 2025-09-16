@@ -6,7 +6,7 @@
 #    By: yanli <yanli@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/09/15 16:59:46 by yanli            ###   ########.fr        #
+#    Updated: 2025/09/16 09:21:56 by yanli            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,24 @@ NAME			= webserv
 
 CXX				= c++
 
-CXXFLAGS		= -Wall -Wextra -std=c++98 -D_DEBUG
+CXXFLAGS		= -Wall -Wextra -std=c++98 -pipe \
+				-mtune=native -march=native \
+				-Og -fno-inline -ggdb3 -fno-omit-frame-pointer \
+				-fno-optimize-sibling-calls \
+				-Wmissing-declarations \
+				-fvar-tracking-assignments -Wuninitialized -Wnon-virtual-dtor \
+				-Woverloaded-virtual \
+				-Wshadow -Wnull-dereference -Wpointer-arith \
+				-Wundef -Wredundant-decls \
+				-Wno-duplicated-branches -Wduplicated-cond \
+				-D_DEBUG \
+				-fsanitize=address,undefined,leak,vptr,float-divide-by-zero,bounds,bounds-strict \
+				-fno-sanitize-recover=all \
+				-fsanitize-address-use-after-scope 
+
+LDFLAGS			= -fsanitize=address,undefined,leak,vptr,float-divide-by-zero,bounds,bounds-strict \
+				-fno-sanitize-recover=all \
+				-fsanitize-address-use-after-scope 
 
 SRCS_DIR		= ./srcs
 
@@ -33,7 +50,7 @@ DEPS			= $(OBJS:.o=.d)
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CXX) -I$(SRCS_DIR) $(OBJS) -o $(NAME)
+	$(CXX) $(LDFLAGS) -I$(SRCS_DIR) $(OBJS) -o $(NAME)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -I$(SRCS_DIR) -MMD -MP -c $< -o $@

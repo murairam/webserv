@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:51:23 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 00:23:15 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 12:29:20 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@ FD::FD(const FD &other):_fd(-1)
 	int	new_fd;
 	if (other._fd > -1)
 	{
-		new_fd = dup(other._fd);
+		new_fd = ::dup(other._fd);
 		if (new_fd < 0)
 			throw SysError(std::string("dup failed"), errno);
 		_fd = new_fd;
@@ -36,11 +36,11 @@ FD	&FD::operator=(const FD &other)
 	if (this != &other)
 	{
 		if (_fd > -1)
-			close(_fd);
+			::close(_fd);
 		_fd = -1;
 		if (other._fd > -1)
 		{
-			new_fd = dup(other._fd);
+			new_fd = ::dup(other._fd);
 			if (new_fd < 0)
 				throw SysError("dup failed", errno);
 			_fd = new_fd;
@@ -53,7 +53,7 @@ FD	&FD::operator=(const FD &other)
 FD::~FD(void)
 {
 	if (_fd > -1)
-	close(_fd);
+	::close(_fd);
 }
 
 bool	FD::isValidFD(void) const
@@ -70,7 +70,7 @@ int	FD::getFD(void) const
 void	FD::resetFD(int fd)
 {
 	if (_fd > -1)
-		close(_fd);
+		::close(_fd);
 	_fd = fd;
 }
 
@@ -88,13 +88,13 @@ int		FD::releaseFD(void)
 void	FD::closeFD(void)
 {
 	if (_fd > -1)
-		close(_fd);
+		::close(_fd);
 	_fd = -1;
 }
 
 FD	FD::openRO(const std::string &path)
 {
-	int	fd = open(path.c_str(), O_RDONLY);
+	int	fd = ::open(path.c_str(), O_RDONLY);
 
 	if (fd < 0)
 		throw SysError("open(READ ONLY) failed: " + path, errno);
@@ -108,7 +108,7 @@ FD	FD::openWO(const std::string &path, bool create, mode_t mode)
 
 	if (create)
 		flags |= O_CREAT | O_TRUNC;
-	fd = open(path.c_str(), flags, mode);
+	fd = ::open(path.c_str(), flags, mode);
 	if (fd < 0)
 		throw SysError("open(WRITE ONLY) failed: " + path, errno);
 	return (FD(fd));
@@ -121,7 +121,7 @@ FD	FD::openRW(const std::string &path, bool create, mode_t mode)
 	
 	if (create)
 		flags |= O_CREAT;
-	fd = open(path.c_str(), flags, mode);
+	fd = ::open(path.c_str(), flags, mode);
 	if (fd < 0)
 		throw SysError("open(READ AND WRITE) failed: " + path, errno);
 	return (FD(fd));
@@ -130,7 +130,7 @@ FD	FD::openRW(const std::string &path, bool create, mode_t mode)
 /* Check non-blocking flag */
 void	FD::setNonBlockingFD(bool enabled)
 {
-	int	flags = fcntl(_fd, F_GETFL, 0);
+	int	flags = ::fcntl(_fd, F_GETFL, 0);
 	int	rv;
 	
 	if (flags < 0)
@@ -139,14 +139,14 @@ void	FD::setNonBlockingFD(bool enabled)
 		flags |= O_NONBLOCK;
 	else
 		flags &= ~O_NONBLOCK;
-	rv = fcntl(_fd, F_SETFL, flags);
+	rv = ::fcntl(_fd, F_SETFL, flags);
 	if (rv < 0)
 		throw SysError("fcntl(F_SETFL) failed", errno);
 }
 	
 bool	FD::isNonBlockingFD(void) const
 {
-	int	flags = fcntl(_fd, F_GETFL, 0);
+	int	flags = ::fcntl(_fd, F_GETFL, 0);
 	if (flags < 0)
 		throw SysError("fcntl(F_GETFL) failed", errno);
 	return ((flags & O_NONBLOCK) != 0);

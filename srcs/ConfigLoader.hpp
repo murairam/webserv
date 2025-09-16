@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 20:40:42 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/15 15:43:30 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:24:04 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 # include "LocationConfig.hpp"
 # include "ServerConfig.hpp"
 # include "Endpoint.hpp"
+# include "Directory.hpp"
 
 class	ConfigLoader
 {
@@ -31,10 +32,11 @@ class	ConfigLoader
 		ServerConfig				_curr_server;
 		LocationConfig				_curr_location;
 		Endpoint					_curr_endpoint;
+		bool						_fatal_error;
+
+		int	_currline;
 
 		int		setDefaultServer(void);
-		void	syntaxError(const std::string &msg) const;
-		void	require(bool toggle, const std::string &msg) const;
 
 		void	parse(std::string path);
 		
@@ -45,15 +47,17 @@ class	ConfigLoader
 		~ConfigLoader(void);
 		ConfigLoader(std::string path);
 		
-		const std::vector<ServerConfig>	&getServers(void) const;
-		const ServerConfig				&getServer(int index) const;
-		int								ServerCount(void) const;
-		const std::string				&getPath(void) const;
+		const std::map<std::string,ServerConfig>	&getServers(void) const;
+		const ServerConfig				&getServer(const std::string &name) const;
+		int								getServerCount(void) const;
+		const std::string				&getConfigFilePath(void) const;
 
-		/* Find server index by its name */
-		int findServerIndex(const std::string &name) const;
-		/* Refresh parsed data (maybe useful or not) */
-		void	reload(std::string path);
+		const ServerConfig	&operator[](std::string name) const;
+		bool	selfcheck(void) const;
+
+#ifdef	_DEBUG
+		void	debug(void) const;
+#endif
 };
 
 #endif

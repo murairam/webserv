@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:09 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 14:20:43 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 12:30:39 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,14 +25,14 @@ class	Directory
 
 	public:	
 		Directory(void);
-		Directory(const std::string &path);
+		Directory(std::string path);
 		Directory(const Directory &other);
 		Directory	&operator=(const Directory &other);
 		~Directory(void);
 
 		bool	isOpen(void) const;
-		void	openDir(const std::string &path);
-		void	closeDir(void);
+		void	ft_opendir(const std::string &path);
+		void	ft_closedir(void);
 
 		std::string	nextEntry(void);
 };

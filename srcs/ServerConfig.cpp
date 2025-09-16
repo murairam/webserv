@@ -6,14 +6,14 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:19 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/15 16:09:08 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:22:02 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ServerConfig.hpp"
 ServerConfig::ServerConfig(void)
 :_server_name(), _listeners(), _client_max_body_size(-1), _error_pages(),
-_index_fallback(), _autoindex(-1), _locations()
+_index_fallback(), _locations()
 {
 
 }
@@ -22,7 +22,7 @@ ServerConfig::ServerConfig(const ServerConfig &other)
 :_server_name(other._server_name), _listeners(other._listeners),
 _client_max_body_size(other._client_max_body_size),
 _error_pages(other._error_pages), _index_fallback(other._index_fallback),
-_autoindex(other._autoindex), _locations(other._locations) {}
+_locations(other._locations) {}
 
 ServerConfig	&ServerConfig::operator=(const ServerConfig &other)
 {
@@ -33,7 +33,6 @@ ServerConfig	&ServerConfig::operator=(const ServerConfig &other)
 		_client_max_body_size = other._client_max_body_size;
 		_error_pages = other._error_pages;
 		_index_fallback = other._index_fallback;
-		_autoindex = other._autoindex;
 		_locations = other._locations;
 	}
 	return (*this);
@@ -139,4 +138,35 @@ void	ServerConfig::setBodySize(long n, char c)
 void	ServerConfig::addErrorPage(int err_code, std::string err_page)
 {
 	_error_pages[err_code] = err_page;
+}
+
+#ifdef	_DEBUG
+void	ServerConfig::debug(void) const
+{
+	std::cout<<"ServerConfig debug info:\n"
+	<<"server name: "<<_server_name<<"\n";
+
+	size_t	i = 0;
+	while (i < _listeners.size())
+		_listeners[i++].debug();
+	std::cout<<"client max body size: "<<_client_max_body_size
+	<<"\n";
+	std::map<int,std::string>::const_iterator	it = _error_pages.begin();
+	while (it != _error_pages.end())
+	{
+		std::cout<<"error pages: "<<it->first<<" "<<it->second<<"\n";
+		it++;
+	}
+	i = 0;
+	while (i < _index_fallback.size())
+		std::cout<<"index fallback: "<<_index_fallback[i++]<<"\n";
+	i = 0;
+	while (i < _locations.size())
+		_locations[i++].debug();
+}
+#endif
+
+void	ServerConfig::addLocation(LocationConfig lc)
+{
+	_locations.push_back(lc);
 }
