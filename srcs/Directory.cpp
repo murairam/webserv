@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:02 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:31:08 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:33:25 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,7 @@ Directory::Directory(const Directory &other)
 			throw SysError("opendir failed: " + _path_cached, errno);
 	}
 }
-	
+
 Directory	&Directory::operator=(const Directory &other)
 {
 	if (this != &other)

@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 14:42:47 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:53:02 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:40:53 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,7 +48,7 @@ void	Process::ft_execve(const std::string &path, char *const argv[], char *const
 }
 
 /* custom wait, waitpid */
-int	Process::ft_wait(int option)
+int	Process::ft_wait(void)
 {
 	int		status;
 	pid_t	pid;

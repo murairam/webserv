@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:29 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 16:22:09 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 18:13:19 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,7 @@ class	ServerConfig
 		std::map<int,std::string>	_error_pages;
 		std::vector<std::string>	_index_fallback;
 		std::vector<LocationConfig>	_locations;
+		int							_priority;
 	public:
 		ServerConfig(void);
 		ServerConfig(const ServerConfig &other);

@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 14:14:01 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 14:16:17 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 19:01:37 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,28 +48,44 @@ LocationConfig	&LocationConfig::operator=(const LocationConfig &other)
 LocationConfig::~LocationConfig(void) {}
 
 const std::string	&LocationConfig::getPathPrefix(void) const
-{ return this->_path_prefix; }
+{
+	return (_path_prefix);
+}
 
 int	LocationConfig::getAllowedMethods(void) const
-{ return this->_allowed_methods; }
+{
+	return (_allowed_methods);
+}
 
 const std::string	&LocationConfig::getRoot(void) const
-{ return this->_root; }
+{
+	return (_root);
+}
 
 const std::vector<std::string>	&LocationConfig::getIndexFiles(void) const
-{ return this->_index_files; }
+{
+	return (_index_files);
+}
 
 bool	LocationConfig::getAutoindex(void) const
-{ return this->_autoindex; }
+{
+	return (_autoindex);
+}
 
 bool	LocationConfig::getUploadEnabled(void) const
-{ return this->_upload_enabled; }
+{
+	return (_upload_enabled);
+}
 
 const std::string	&LocationConfig::getUploadPath(void) const
-{ return this->_upload_path; }
+{
+	return (_upload_path);
+}
 
 int	LocationConfig::getRedirectCode(void) const
-{ return this->_redirect_code; }
+{
+	return (_redirect_code);
+}
 
 std::string	LocationConfig::getCgi(std::string ext) const
 {
@@ -84,13 +100,19 @@ std::string	LocationConfig::getCgi(std::string ext) const
 }
 
 const std::string	&LocationConfig::getRedirectTarget(void) const
-{ return this->_redirect_target; }
+{
+	return (_redirect_target);
+}
 
 long	LocationConfig::getClientBodyLimit(void) const
-{ return this->_client_max_body_size_override; }
+{
+	return (_client_max_body_size_override);
+}
 
 int	LocationConfig::getPriority(void) const
-{ return this->_priority; }
+{
+	return (_priority);
+}
 
 void	LocationConfig::setPathPrefix(const std::string &prefix)
 {
@@ -144,6 +166,7 @@ void	LocationConfig::addCgiHandler(const std::string &ext, const std::string &pr
 	_cgi_handlers[ext] = program;
 }
 
+#ifdef	_DEBUG
 void	LocationConfig::debug(void) const
 {
 	std::cout<<"LocationConfig debug info:\n"
@@ -155,6 +178,8 @@ void	LocationConfig::debug(void) const
 		std::cout<<i<<": "<<_index_files[i]<<"\n";
 		i++;
 	}
+	if (!i)
+		std::cout<<"\n";
 	if (_autoindex)
 		std::cout<<"autoindex is enabled\n";
 	else
@@ -175,3 +200,4 @@ void	LocationConfig::debug(void) const
 		}
 	}
 }
+#endif

@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:19 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 16:22:02 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 18:35:30 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -112,20 +112,28 @@ void	ServerConfig::setServerName(std::string name)
 
 void	ServerConfig::addEndpoint(std::string data)
 {
+	std::string	host;
 	std::string::size_type	pos = data.find(':');
 	if (pos == std::string::npos)
-		throw std::runtime_error("Invalid endpoint has been ignored: " + data);
-	std::string	host = data.substr(0, pos);
+		host = ("0.0.0.0");
+	else
+		host = data.substr(0, pos);
+	if (host == "*")
+		host = ("0.0.0.0");
 	int			port = std::atoi(data.substr(pos + 1).c_str());
-
-	if (port < 0 || port > 65536)
+#ifdef	_DEBUG
+	std::cout<<"ServerConfig::addEndpoint debug info: "<<host<<":"<<port<<std::endl;
+#endif
+	if (port < 1 || port > 65536)
 		throw std::runtime_error("Invalid endpoint has been ignored: " + data);
 	_listeners.push_back(Endpoint(host, port));
 }
 
 void	ServerConfig::setBodySize(long n, char c)
 {
-	if (c == 'K')
+	if (c == 'B')
+		_client_max_body_size = n;
+	else if (c == 'K')
 		_client_max_body_size = 1024 * n;
 	else if (c == 'M')
 		_client_max_body_size = 1024 * 1024 * n;

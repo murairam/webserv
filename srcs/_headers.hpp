@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:18:53 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:41:44 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 17:08:12 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,6 +35,7 @@
 # include <sys/socket.h>
 # include <sys/stat.h>
 # include <sys/wait.h>
+# include <poll.h>
 # include <netdb.h>
 # include <netinet/in.h>
 # include <arpa/inet.h>

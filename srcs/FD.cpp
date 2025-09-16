@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:51:23 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:29:20 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:34:43 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -143,7 +143,7 @@ void	FD::setNonBlockingFD(bool enabled)
 	if (rv < 0)
 		throw SysError("fcntl(F_SETFL) failed", errno);
 }
-	
+
 bool	FD::isNonBlockingFD(void) const
 {
 	int	flags = ::fcntl(_fd, F_GETFL, 0);

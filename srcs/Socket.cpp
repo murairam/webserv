@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 12:42:21 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:25:57 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:39:02 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,7 +105,7 @@ void	Socket::listenOn(int backlog) const
 	if (listen(_fd.getFD(), backlog) < 0)
 		throw SysError("Unable to listen to socket", errno);
 }
-		
+
 Socket	Socket::acceptOne(sockaddr_storage &peer_sa, socklen_t &peer_len) const
 {
 	int	fd;
@@ -153,4 +153,3 @@ ssize_t	Socket::recvIO(void *buf, size_t len, int flags) const
 	}
 	return (0);
 }
-

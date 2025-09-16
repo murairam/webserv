@@ -74,7 +74,14 @@ void	ConfigLoader::parse(std::string path)
 #endif
 		if (context == SERVER)
 		{
-			if (keyword.size() == 1 && keyword == "}")
+			if (keyword == "{")
+			{
+				_curr_server = ServerConfig();
+				inside_bracket++;
+				_server_count++;
+				_server_index++;
+			}
+			else if (keyword.size() == 1 && keyword == "}")
 			{
 				inside_bracket--;
 				if (inside_bracket)
@@ -82,15 +89,28 @@ void	ConfigLoader::parse(std::string path)
 					std::cerr<<path<<":"<<_currline<<": Unclosed bracket detected; trying to set up default server"<<std::endl;
 					goto use_default_server;
 				}
-				_servers[_curr_server.getServerName()] = _curr_server;
+				if (_curr_server.getServerName() == "")
+				{
+					std::cerr<<path<<":"<<_currline<<": Server must have a name; trying to set up default server"<<std::endl;
+					goto use_default_server;
+				}
+				_servers[_server_index] = _curr_server;
 				_use_default_server = false;
 				context = GLOBAL;
 			}
 			else if (keyword == "server_name")
 			{
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
+				{
+					std::cerr<<path<<":"<<_currline<<": Server must have a name and must be terminated by a single ';'. trying up set up default server"<<std::endl;
 					goto use_default_server;
+				}
 				temp_word.erase(temp_word.size() - 1);
+				if (temp_word.empty() || !std::isalnum(temp_word[temp_word.size() - 1]))
+				{
+					std::cerr<<path<<":"<<_currline<<": Invalid server name, it must be terminated by a letter or a digit, it also must be temrminated by a single ';'. trying to set up default server"<<std::endl;
+					goto use_default_server;
+				}
 #ifdef	_DEBUG
 				std::cout<<"parser: server_name: "<<temp_word<<std::endl;
 #endif
@@ -115,13 +135,18 @@ void	ConfigLoader::parse(std::string path)
 					goto use_default_server;
 				char	unit;
 				unit = temp_word[temp_word.size() - 1];
-				if (unit != 'K' && unit != 'M' && unit != 'G')
+				if (unit != 'K' && unit != 'M' && unit != 'G' && unit < '0' && unit > '9')
 					goto use_default_server;
-				temp_word.erase(temp_word.size() - 1);
-				if (temp_word.empty())
-					goto use_default_server;
-				long limit = std::strtol(temp_word.c_str(), 0, 10);
-				_curr_server.setBodySize(limit, unit);
+				if (unit == 'K' || unit == 'M' || unit == 'G')
+				{
+					temp_word.erase(temp_word.size() - 1);
+					if (temp_word.empty())
+						goto use_default_server;
+					long	limit = std::strtol(temp_word.c_str(), 0, 10);
+					_curr_server.setBodySize(limit, unit);
+				}
+				long	limit = std::strtol(temp_word.c_str(), 0, 10);
+				_curr_server.setBodySize(limit, 'B');
 #ifdef	_DEBUG
 				std::cout<<"parser: client_max_body_size: "<<temp_word<<unit<<std::endl;
 #endif
@@ -183,6 +208,7 @@ void	ConfigLoader::parse(std::string path)
 					_curr_server = ServerConfig();
 					inside_bracket++;
 					_server_count++;
+					_server_index++;
 				}
 				else
 				{
@@ -220,9 +246,16 @@ void	ConfigLoader::parse(std::string path)
 #endif
 				if (!folder)
 				{
-					err_code = errno;
-					std::cerr<<path<<":"<<_currline<<": Unable to open the folder '"<<temp_word<<"': "<<std::strerror(err_code)<<std::endl;
-					goto use_default_server;
+					int	temp_fd = ::open(temp_word.c_str(), O_RDONLY);
+					if (temp_fd < 0)
+					{
+						err_code = errno;
+						std::cerr<<path<<":"<<_currline<<": Unable to open the folder/file '"<<temp_word<<"': "<<std::strerror(err_code)<<std::endl;
+						goto use_default_server;
+					}
+					::close(temp_fd);
+					_curr_location.setRoot(temp_word);
+					continue;
 				}
 				_curr_location.setRoot(temp_word);
 				closedir(folder);
@@ -421,22 +454,24 @@ int	ConfigLoader::setDefaultServer(void)
 
 const ServerConfig	&ConfigLoader::operator[](std::string name) const
 {
-	std::map<std::string,ServerConfig>::const_iterator	it = _servers.find(name);
-	if (it == _servers.end())
-		throw std::runtime_error("No server named '" + name + "' could be found");
-	return (it->second);
+	std::map<int,ServerConfig>::const_iterator	it = _servers.begin();
+	
+	while (it != _servers.end())
+	{
+		if (it->second.getServerName() == name)
+			return (it->second);
+		it++;
+	}
+	throw SysError("Unable to find the server called '" + name + "'", 0);
 }
 
 #ifdef	_DEBUG
 void	ConfigLoader::debug(void) const
 {
 	std::cout<<"ConfigLoader debug info:\nconfig file path: "<<_path<<"\n";
-	std::map<std::string,ServerConfig>::const_iterator	it = _servers.begin();
-	while (it != _servers.end())
-	{
-		it->second.debug();
-		it++;
-	}
+	int	index = 0;
+	while (index < _server_count)
+		(*this)[index++].debug();
 	if (_use_default_server)
 		std::cout<<"using default server: YES\n";
 	else
@@ -445,17 +480,20 @@ void	ConfigLoader::debug(void) const
 }
 #endif
 
-const std::map<std::string,ServerConfig>	&ConfigLoader::getServers(void) const
+const std::map<int,ServerConfig>	&ConfigLoader::getServers(void) const
 {
 	return (_servers);
 }
 
-const ServerConfig	&ConfigLoader::getServer(const std::string &name) const
+const ServerConfig	&ConfigLoader::getServerByIndex(int index) const
 {
-	std::map<std::string,ServerConfig>::const_iterator	it = _servers.find(name);
+	std::map<int,ServerConfig>::const_iterator	it = _servers.find(index);
 	if (it != _servers.end())
 		return (it->second);
-	throw std::runtime_error("No server named '" + name + "' could be found");
+	std::ostringstream	oss;
+	oss<<index;
+	std::string	str = oss.str();
+	throw std::runtime_error("No server with index'" + str + "'could be found");
 }
 
 int	ConfigLoader::getServerCount(void) const
@@ -471,4 +509,14 @@ const std::string	&ConfigLoader::getConfigFilePath(void) const
 bool	ConfigLoader::selfcheck(void) const
 {
 	return (_fatal_error);
+}
+
+const ServerConfig	&ConfigLoader::getServerByName(std::string name) const
+{
+	return ((*this)[name]);
+}
+
+const ServerConfig	&ConfigLoader::operator[](int index) const
+{
+	return ((*this).getServerByIndex(index));
 }
