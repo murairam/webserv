@@ -1,0 +1,96 @@
+GET Template :
+`
+GET <origin-form-request-target> <HTTP-version>\r\n
+Host:<OWS><authority>\r\n
+User-Agent:<OWS><user-agent>\r\n
+Accept:<OWS><media-range-list>\r\n
+Accept-Language:<OWS><language-range-list>\r\n
+Accept-Encoding:<OWS><coding-list>\r\n
+Connection:<OWS><connection-option>\r\n
+If-None-Match:<OWS><etag-list>\r\n
+If-Modified-Since:<OWS><http-date>\r\n
+Range:<OWS><byte-range-set>\r\n
+If-Range:<OWS><entity-tag-or-http-date>\r\n
+Authorization:<OWS><credentials>\r\n
+Cookie:<OWS><cookie-pairs>\r\n
+\r\n
+<message-body-usually-empty>
+`
+
+GET Header :
+`
+*   Trying 127.0.0.1:30000...
+* Connected to 127.0.0.1 (127.0.0.1) port 30000
+* using HTTP/1.x
+> GET /path/to/resource?foo=bar&baz=qux HTTP/1.1
+> Host: example.com:30000
+> User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0
+> Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+> Accept-Language: en-US,en;q=0.9,fr;q=0.7
+> Accept-Encoding: gzip, deflate, br
+> Referer: http://example.com/previous/page
+> Upgrade-Insecure-Requests: 1
+> Connection: keep-alive
+> Cache-Control: no-cache
+> Pragma: no-cache
+> If-Modified-Since: Tue, 16 Sep 2025 20:38:29 GMT
+> If-None-Match: "68c99a9a-267"
+> Range: bytes=0-499
+> Cookie: sessionid=abcdef123456; theme=dark; csrftoken=qwerty
+> Authorization: Basic dXNlcjpwYXNzd29yZA==
+> Origin: http://example.com
+> Upgrade: websocket
+> Sec-WebSocket-Version: 13
+> Sec-WebSocket-Key: SGVsbG9Xb3JsZA==
+> X-Requested-With: XMLHttpRequest
+> X-Forwarded-For: 203.0.113.45
+> Forwarded: for=203.0.113.45;proto=http;by=127.0.0.1
+> Via: 1.1 proxy.example.com
+> TE: trailers
+> 
+`
+
+Nginx Response :
+`
+< HTTP/1.1 404 Not Found
+< Server: nginx/1.26.3 (Ubuntu)
+< Date: Tue, 16 Sep 2025 22:05:03 GMT
+< Content-Type: text/html
+< Content-Length: 162
+< Connection: keep-alive
+< 
+<html>
+<head><title>404 Not Found</title></head>
+<body>
+<center><h1>404 Not Found</h1></center>
+<hr><center>nginx/1.26.3 (Ubuntu)</center>
+</body>
+</html>
+`
+
+Header created by :
+`curl -v --http1.1 'http://127.0.0.1:30000/path/to/resource?foo=bar&baz=qux' \
+  -H 'Host: example.com:30000' \
+  -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0' \
+  -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8' \
+  -H 'Accept-Language: en-US,en;q=0.9,fr;q=0.7' \
+  -H 'Accept-Encoding: gzip, deflate, br' \
+  -H 'Referer: http://example.com/previous/page' \
+  -H 'Upgrade-Insecure-Requests: 1' \
+  -H 'Connection: keep-alive' \
+  -H 'Cache-Control: no-cache' \
+  -H 'Pragma: no-cache' \
+  -H 'If-Modified-Since: Tue, 16 Sep 2025 20:38:29 GMT' \
+  -H 'If-None-Match: "68c99a9a-267"' \
+  -H 'Range: bytes=0-499' \
+  -H 'Cookie: sessionid=abcdef123456; theme=dark; csrftoken=qwerty' \
+  -H 'Authorization: Basic dXNlcjpwYXNzd29yZA==' \
+  -H 'Origin: http://example.com' \
+  -H 'Upgrade: websocket' \
+  -H 'Sec-WebSocket-Version: 13' \
+  -H 'Sec-WebSocket-Key: SGVsbG9Xb3JsZA==' \
+  -H 'X-Requested-With: XMLHttpRequest' \
+  -H 'X-Forwarded-For: 203.0.113.45' \
+  -H 'Forwarded: for=203.0.113.45;proto=http;by=127.0.0.1' \
+  -H 'Via: 1.1 proxy.example.com' \
+  -H 'TE: trailers'`

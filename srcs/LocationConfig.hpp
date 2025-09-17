@@ -6,19 +6,12 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 14:14:10 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 13:00:41 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/17 13:40:53 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef LOCATIONCONFIG_HPP
 # define LOCATIONCONFIG_HPP
-
-# ifndef LOCATION_METHODS_BITMASK
-#  define LOCATION_METHODS_BITMASK
-#  define GET_MASK (1 << 0)
-#  define POST_MASK (1 << 1)
-#  define DELETE_MASK (1 << 2)
-# endif
 
 # include "_headers.hpp"
 
@@ -46,6 +39,7 @@ class	LocationConfig
 
 		const std::string	&getPathPrefix(void) const;
 		int					getAllowedMethods(void) const;
+		bool				MethodIsAllowed(int method_mask) const;
 		const std::string	&getRoot(void) const;
 		bool				getAutoindex(void) const;
 		bool				getUploadEnabled(void) const;
@@ -73,5 +67,7 @@ class	LocationConfig
 #endif
 
 };
+
+
 
 #endif

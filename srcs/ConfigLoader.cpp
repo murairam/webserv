@@ -273,6 +273,14 @@ void	ConfigLoader::parse(std::string path)
 						method_mask |= DELETE_MASK;
 					else if (temp_word == "POST" || temp_word == "POST;")
 						method_mask |= POST_MASK;
+					else if (temp_word == "PUT" || temp_word == "PUT;")
+						method_mask |= PUT_MASK;
+					else if (temp_word == "OPTIONS" || temp_word == "OPTIONS;")
+						method_mask |= OPTIONS_MASK;
+					else if (temp_word == "CONNECT" || temp_word == "CONNECT;")
+						method_mask |= CONNECT_MASK;
+					else if (temp_word == "HEAD" || temp_word == "HEAD;")
+						method_mask |= HEAD_MASK;
 					temp_word.clear();
 				}
 				_curr_location.setMethod(method_mask);

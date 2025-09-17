@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 14:14:01 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 19:01:37 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/17 13:36:01 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -201,3 +201,8 @@ void	LocationConfig::debug(void) const
 	}
 }
 #endif
+
+bool	LocationConfig::MethodIsAllowed(int method_mask) const
+{
+	return ((method_mask & _allowed_methods) != 0);
+}

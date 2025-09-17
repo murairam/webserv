@@ -6,13 +6,14 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 16:24:28 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/17 17:56:58 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 # include "_headers.hpp"
 # include "ConfigLoader.hpp"
 # include "SysError.hpp"
+# include "Header.hpp"
 
 int	main(int argc, char **argv, char **envp)
 {
@@ -43,5 +44,12 @@ int	main(int argc, char **argv, char **envp)
 	{
 		std::cerr<<"Non-standard exception caught"<<std::endl;
 	}
+/*
+	(void)argc;
+	(void)argv;
+	(void)envp;
+	const std::string	s("GET /path/to/resource?foo=bar&baz=qux HTTP/1.1\r\n\r\n");
+	Header	test(s);*/
+	
 	return (0);
 }
