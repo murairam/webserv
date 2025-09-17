@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 17:56:58 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/17 20:56:03 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,9 @@
 # include "ConfigLoader.hpp"
 # include "SysError.hpp"
 # include "Header.hpp"
+# include "debug.hpp"
 
+/*
 int	main(int argc, char **argv, char **envp)
 {
 	try
@@ -44,12 +46,30 @@ int	main(int argc, char **argv, char **envp)
 	{
 		std::cerr<<"Non-standard exception caught"<<std::endl;
 	}
-/*
-	(void)argc;
-	(void)argv;
-	(void)envp;
-	const std::string	s("GET /path/to/resource?foo=bar&baz=qux HTTP/1.1\r\n\r\n");
-	Header	test(s);*/
-	
+	return (0);
+}*/
+
+/* this one is to test Get/Post/Delete Request parsing */
+int	main(int argc, char **argv, char **envp)
+{
+	try
+	{
+		(void)argc;
+		(void)argv;
+		(void)envp;
+		const std::string	s(GET_REQUEST);
+		std::cout<<s<<std::endl;
+		Header	test(s);
+		if (test.shouldReject())
+			return (1);
+	}
+	catch (const std::exception &e)
+	{
+		std::cerr<<e.what()<<std::endl;
+	}
+	catch (...)
+	{
+		std::cerr<<"Non-standard exception caught"<<std::endl;
+	}
 	return (0);
 }

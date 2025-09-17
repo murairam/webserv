@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/16 23:53:52 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 17:12:16 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/17 20:42:55 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,6 @@ class	DeleteRequest
 		~DeleteRequest(void);
 		DeleteRequest(const DeleteRequest &other);
 		DeleteRequest	&operator=(const DeleteRequest &other);
-		bool	selfcheck(void) const;
+		bool	shouldReject(void) const;
 };
 #endif

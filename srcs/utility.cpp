@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 15:34:00 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 17:36:15 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/17 19:56:22 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ bool	isDirectory(const std::string &path)
 		return (false);
 	return (S_ISDIR(st.st_mode) != 0);
 }
-
+/*
 bool	isHeaderEnd(const std::string &s)
 {
 	if (s.size() < 1 || s[0] != '\r')
@@ -46,7 +46,7 @@ bool	isHeaderLineEnd(const std::string &s)
 	if (s.size() < 1 || s[s.size() - 1] != '\r')
 		return (false);
 	return (true);
-}
+}*/
 
 int	MethodTokenToMask(const std::string &method)
 {

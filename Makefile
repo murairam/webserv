@@ -6,7 +6,7 @@
 #    By: yanli <yanli@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/09/17 18:07:15 by yanli            ###   ########.fr        #
+#    Updated: 2025/09/17 23:46:35 by yanli            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@ NAME			= webserv
 
 CXX				= c++
 
-CXXFLAGS		= -Wall -Wextra -std=c++98 -D_DEBUG 
+CXXFLAGS		= -Wall -Wextra -Werror -std=c++98
 
 SRCS_DIR		= ./srcs
 

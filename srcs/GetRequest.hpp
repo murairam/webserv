@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/16 23:54:22 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 17:08:17 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/17 22:54:00 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,12 +31,18 @@ class	GetRequest
 		bool		_auth_set;
 		std::map<std::string,std::string>	_cookie;
 		bool		_cookie_set;
-		
 		bool		_should_reject;
+		bool		_persistent;
+		bool		_chunked;
+		long		_body_length;
+		bool		_body_length_set;
+		int			_err_code;
+		bool		_err_code_set;
 
-		bool	containInvalidSection(const std::string &s) const;
-		bool	containInvalidLineEnd(const std::string &S) const;
+/*		bool	containInvalidSection(const std::string &s) const;
+		bool	containInvalidLineEnd(const std::string &S) const;*/
 		void	process(const std::string &s);
+		void	setErrCode(void);
 
 	public:
 		GetRequest(void);
@@ -51,14 +57,20 @@ class	GetRequest
 		bool	isPortSet(void) const;
 		bool	isAuthSet(void) const;
 		bool	isCookieSet(void) const;
-		bool	selfcheck(void) const;
+		bool	isPersistent(void) const;
+		bool	isChunked(void) const;
+		bool	isBodyLengthSet(void) const;
+		bool	isErrCodeSet(void) const;
+		bool	shouldReject(void) const;
 		
 		std::string	getTarget(void) const;
 		std::string	getQuery(void) const;
 		std::string	getHost(void) const;
 		int			getPort(void) const;
+		long		getBodyLength(void) const;
+		int			getErrCode(void) const;
 		std::map<std::string,std::string>	getAuth(void) const;
 		std::map<std::string,std::string>	getCookie(void) const;
-
 };
+
 #endif

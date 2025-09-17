@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/16 23:24:01 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 17:09:18 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/17 20:45:57 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,7 +41,7 @@ Header::Header(std::string s)
 		_should_reject = true;
 }
 
-int	Header::process(const std::string &str)
+bool	Header::process(const std::string &str)
 {
 	std::string			s = str;
 	std::istringstream	iss(s);
@@ -54,19 +54,24 @@ int	Header::process(const std::string &str)
 	{
 		_request_method = GET_MASK;
 		_get = GetRequest(str);
-		return (_get.selfcheck());
+		return (_get.shouldReject());
 	}
 	else if (method_word == "POST")
 	{
 		_request_method = POST_MASK;
 		_post = PostRequest(str);
-		return (_post.selfcheck());
+		return (_post.shouldReject());
 	}
 	else if (method_word == "DELETE")
 	{
 		_request_method = DELETE_MASK;
 		_delete = DeleteRequest(str);
-		return (_delete.selfcheck());
+		return (_delete.shouldReject());
 	}
-	return (1);
+	return (0);
+}
+
+bool	Header::shouldReject(void) const
+{
+	return (_should_reject);
 }

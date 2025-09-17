@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 12:42:28 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 13:14:07 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/17 23:33:32 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,6 +49,6 @@ class	Socket
 		/* Input/Output */
 		ssize_t	sendIO(const void *buf, size_t len, int flags) const;
 		ssize_t	recvIO(void *buf, size_t len, int flags) const;
-	};
+};
 
 #endif
