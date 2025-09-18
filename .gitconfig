@@ -1,0 +1,3 @@
+[merge "ours42header"]
+    name = always keep our version of the 42 header
+    driver = bash -c 'awk \"/^\\/\\* \\*{74} \\/\\*\$/ { in_header = !in_header; next } !in_header\" \"$1\" > \"$2\"; cat \"$2\"'
