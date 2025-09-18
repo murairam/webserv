@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/16 23:54:22 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 22:54:00 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/18 19:21:23 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,19 +34,15 @@ class	GetRequest
 		bool		_should_reject;
 		bool		_persistent;
 		bool		_chunked;
-		long		_body_length;
 		bool		_body_length_set;
 		int			_err_code;
 		bool		_err_code_set;
 
-/*		bool	containInvalidSection(const std::string &s) const;
-		bool	containInvalidLineEnd(const std::string &S) const;*/
-		void	process(const std::string &s);
-		void	setErrCode(void);
+		void	process(std::istream &s);
 
 	public:
 		GetRequest(void);
-		GetRequest(std::string s);
+		GetRequest(std::istream &s);
 		GetRequest(const GetRequest &other);
 		GetRequest	&operator=(const GetRequest &other);
 		~GetRequest(void);

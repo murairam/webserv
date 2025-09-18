@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:09 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:30:39 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/18 13:56:27 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,9 @@ class	Directory
 {
 	private:
 		DIR			*_dir;
-		std::string	_path_cached;
+		std::string	_path;
+		int			_err_code;
+		bool		_err_code_set;
 
 	public:	
 		Directory(void);
@@ -31,8 +33,11 @@ class	Directory
 		~Directory(void);
 
 		bool	isOpen(void) const;
-		void	ft_opendir(const std::string &path);
+		void	setPath(std::string path);
+		void	ft_opendir(void);
 		void	ft_closedir(void);
+		int		getErrCode(void) const;
+		bool	isErrCodeSet(void) const;
 
 		std::string	nextEntry(void);
 };

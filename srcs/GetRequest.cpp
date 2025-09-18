@@ -6,45 +6,45 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/16 23:54:12 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 23:14:36 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/18 20:17:38 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "GetRequest.hpp"
-/*
-bool	GetRequest::containInvalidSection(const std::string &s) const
+
+namespace
 {
-#ifdef	_DEBUG
-	std::cout<<"GetRequest::containInvalidSection debug info:\n'"<<s<<"'"<<std::endl;
-#endif
-	if (s == "Host" || s == "User-Agent" || s == "Accept" || s == "Accept-Language"
-		|| s == "Agent-Encoding" || s == "Connection" || s == "If-None-Match"
-		|| s == "If-Modified-Since" || s == "Range" || s == "If-Range"
-		|| s == "Authorization" || s == "Cookie" || s == "Cache-Control"
-		|| s == "Pragma" || s == "Upgrade-Insecure-Requests" || s == "Referer"
-		|| s == "Origin" || s == "Upgrade" || s == "Sec-WebSocket-Version"
-		|| s == "Sec-WebSocket-Key" || s == "X-Requested-With" || s == "X-Forwarded-For"
-		|| s == "Via" || s == "TE")
-		return (false);
-	return (true);
+	static std::string	trim(const std::string &input)
+	{
+		std::string::size_type	first = input.find_first_not_of(" \t");
+		if (first == std::string::npos)
+			return ("");
+		std::string::size_type	last = input.find_last_not_of(" \t");
+		return (input.substr(first, last - first + 1));
+	}
+
+	static std::string	toLower(const std::string &input)
+	{
+		std::string	copy = input;
+		std::string::iterator	it = copy.begin();
+		while (it != copy.end())
+		{
+			*it = static_cast<char>(std::tolower(static_cast<unsigned char>(*it)));
+			it++;
+		}
+		return (copy);
+	}
 }
 
-bool	GetRequest::containInvalidLineEnd(const std::string &s) const
+void	GetRequest::process(std::istream &s)
 {
-	if (s.size() < 1 || s[s.size() - 1] != '\r')
-		return (true);
-	return (false);
-}*/
-
-void	GetRequest::process(const std::string &s)
-{
-	std::istringstream	file(s);
 	std::istringstream	iss;
 	std::string			line;
 	std::string			keyword;
 	std::string			valueword;
+	bool				toggle = true;
 	
-	while (std::getline(file, line))
+	while (std::getline(s, line))
 	{
 		iss.clear();
 		iss.str(line);
@@ -56,12 +56,11 @@ void	GetRequest::process(const std::string &s)
 #ifdef	_DEBUG
 		std::cout<<"'"<<keyword<<"'"<<std::endl;
 #endif
-		if (keyword == "GET")
+		if (toggle)
 		{
-			if (_should_reject)
-				return ;
-			keyword.clear();
-			iss>>keyword;
+			toggle = false;
+			if (keyword.empty())
+				goto reject_400;
 			std::string::size_type	query_mark_pos = keyword.find('?');
 			if (query_mark_pos != std::string::npos)
 			{
@@ -86,71 +85,74 @@ void	GetRequest::process(const std::string &s)
 			}
 			iss>>std::ws;
 			std::getline(iss, valueword, '\r');
-			if (valueword.size() < 8 || valueword[5] != '1' || valueword[6] !='.' || valueword[7] != '1')
-			{
-				_err_code = 501;
-				_err_code_set = true;
-				goto reject;
-			}
+			valueword = trim(valueword);
+			if (valueword != "HTTP/1.1")
+				goto reject_505;
 		}
 		else if (keyword == "Connection:")
 		{
 			iss>>std::ws;
 			if (!std::getline(iss, valueword, '\r'))
+				goto reject_400;
+			valueword = trim(valueword);
+			std::string	lowered = toLower(valueword);
+			if (lowered.empty())
+				goto reject_400;
+			std::istringstream	conn_stream(lowered);
+			std::string			conn_token;
+			while (std::getline(conn_stream, conn_token, ','))
 			{
-				_err_code = 400;
-				_err_code_set = true;
-				goto reject;
-			}
-			if (valueword == "close")
-				_persistent = false;
-			else if (valueword == "keep-alive")
-				continue;
-			else
-			{
-				_err_code = 501;
-				_err_code_set = true;
-				goto reject;			
+				conn_token = trim(conn_token);
+				if (conn_token == "close")
+					_persistent = false;
+				else if (conn_token == "keep-alive")
+					continue;
 			}
 		}
 		else if (keyword == "Host:")
 		{
 			if (_host_set)
-			{
-				_err_code = 400;
-				_err_code_set = true;
-				goto reject;
-			}
+				goto reject_400;
 			iss>>std::ws;
 			if (!std::getline(iss, valueword, '\r'))
+				goto reject_400;
+			valueword = trim(valueword);
+			if (valueword.empty())
+				goto reject_400;
+			std::string	host;
+			std::string	port_candidate;
+			bool		port_present = false;
+			if (valueword[0] == '[')
+				goto reject_505;
+			else
 			{
-				_err_code = 400;
-				_err_code_set = true;
-				goto reject;
+				std::string::size_type	colon_mark_pos = valueword.find(':');
+				if (colon_mark_pos != std::string::npos)
+				{
+					host = valueword.substr(0, colon_mark_pos);
+					port_candidate = trim(valueword.substr(colon_mark_pos + 1));
+					port_present = true;
+				}
+				else
+					host = valueword;
 			}
-			std::string::size_type	colon_mark_pos = valueword.find(':');
-			if (colon_mark_pos != std::string::npos)
+			host = trim(host);
+			if (host.empty())
+				goto reject_400;
+			if (port_present)
 			{
-				std::string	host = valueword.substr(0, colon_mark_pos);
-				if (colon_mark_pos + 1 >= valueword.size())
-				{
-					_host = host;
-					_host_set = true;
-					continue;
-				}
-				std::string	portstr = valueword.substr(colon_mark_pos + 1, valueword.size());
-				int	portvalue = std::atoi(portstr.c_str());
+				if (port_candidate.empty())
+					goto reject_400;
+				if (port_candidate.find_first_not_of("0123456789") != std::string::npos)
+					goto reject_400;
+				long	portvalue = std::strtol(port_candidate.c_str(), NULL, 10);
 				if (portvalue < 0 || portvalue > 65535)
-				{
-					_err_code = 400;
-					_err_code_set = true;
-					goto reject;
-				}
-				_host = host;
-				_host_set = true;
-				_port = portvalue;
+					goto reject_400;
+				_port = static_cast<int>(portvalue);
 				_port_set = true;
 			}
+			_host = host;
+			_host_set = true;
 		}
 		else if (keyword == "Authorization:")
 		{
@@ -160,32 +162,39 @@ void	GetRequest::process(const std::string &s)
 			auth_value.clear();
 			iss>>auth_type;
 			iss>>std::ws;
-			if (!std::getline(iss, auth_type, '\r') || auth_type.empty() || auth_value.empty())
-			{
-				_err_code = 400;
-				_err_code_set = true;
-				goto reject;
-			}
+			if (!std::getline(iss, auth_value, '\r') || auth_type.empty())
+				goto reject_400;
+			auth_value = trim(auth_value);
+			if (auth_value.empty())
+				goto reject_400;
 			_auth[auth_type] = auth_value;
 			_auth_set = true;
 		}
 		else if (keyword == "Cookie:")
 		{
-			std::string	combined;
-			while (iss>>combined)
+			std::string	cookie_line;
+			iss>>std::ws;
+			if (!std::getline(iss, cookie_line, '\r'))
+				continue;
+			cookie_line = trim(cookie_line);
+			if (cookie_line.empty())
+				continue;
+			std::istringstream	cookie_stream(cookie_line);
+			std::string	cookie_pair;
+			while (std::getline(cookie_stream, cookie_pair, ';'))
 			{
-				std::string::size_type	equal_mark_pos = combined.find('=');
-				if (equal_mark_pos == std::string::npos || equal_mark_pos + 1 >= combined.size())
+				cookie_pair = trim(cookie_pair);
+				if (cookie_pair.empty())
 					continue;
-				std::string	c1 = combined.substr(0, equal_mark_pos);
-				std::string	c2 = combined.substr(equal_mark_pos + 1, combined.size());
-				if (c2[c2.size() - 1] == ';')
-					c2.erase(c2.size() - 1);
+				std::string::size_type	equal_mark_pos = cookie_pair.find('=');
+				if (equal_mark_pos == std::string::npos)
+					continue;
+				std::string	c1 = trim(cookie_pair.substr(0, equal_mark_pos));
+				std::string	c2 = trim(cookie_pair.substr(equal_mark_pos + 1));
+				if (c1.empty())
+					continue;
 				_cookie[c1] = c2;
 				_cookie_set = true;
-				combined.clear();
-				c1.clear();
-				c2.clear();
 			}
 			#ifdef	_DEBUG
 			std::map<std::string,std::string>::const_iterator	it = _cookie.begin();
@@ -200,40 +209,38 @@ void	GetRequest::process(const std::string &s)
 		{
 			iss>>std::ws;
 			if (!std::getline(iss, valueword, '\r') || valueword != "chunked")
-			{
-				_err_code = 501;
-				_err_code_set = true;
-				goto reject;
-			}
+				goto reject_501;
 			_chunked = true;
 		}
 		else if (keyword == "Content-Length:")
-		{
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r') || valueword.find_first_not_of("0123456798") != std::string::npos)
-			{
-				_err_code = 400;
-				_err_code_set = true;
-				goto reject;
-			}
-			long	len = std::atol(valueword.c_str());
-			_body_length = len;
-		}
+			_body_length_set = true;
 		else
 			continue;
 	}
+	if (!_target_set || !_host_set)
+		goto reject_400;
 	if (_chunked && _body_length_set)
-		goto reject;
+		goto reject_501;
 	return;
-/*
-	reject:
+
+	reject_400:
 	{
+		_err_code = 400;
+		_err_code_set = true;
 		_should_reject = true;
-		std::cerr<<"Incoming invalid GET request has been rejected"<<std::endl;
+		return;
 	}
-*/
-	reject:
+	reject_501:
 	{
+		_err_code = 501;
+		_err_code_set = true;
+		_should_reject = true;
+		return;
+	}
+	reject_505:
+	{
+		_err_code = 505;
+		_err_code_set = true;
 		_should_reject = true;
 		return;
 	}
@@ -244,18 +251,17 @@ GetRequest::GetRequest(void)
 _host(""), _host_set(false), _port(0), _port_set(false),
 _auth(), _auth_set(false), _cookie(), _cookie_set(false),
 _should_reject(false),_persistent(true), _chunked(false),
-_body_length(0), _body_length_set(false), _err_code(0)
+_body_length_set(false), _err_code(0), _err_code_set(false)
 {}
 
-GetRequest::GetRequest(std::string s)
+GetRequest::GetRequest(std::istream &s)
 :_target(""), _target_set(false), _query(""), _query_set(false),
 _host(""), _host_set(false), _port(0), _port_set(false),
 _auth(), _auth_set(false), _cookie(), _cookie_set(false),
 _should_reject(false), _persistent(true), _chunked(false),
-_body_length(0), _body_length_set(false), _err_code(0)
+_body_length_set(false), _err_code(0), _err_code_set(false)
 {
 	this->process(s);
-	this->setErrCode();
 }
 
 GetRequest::GetRequest(const GetRequest &other)
@@ -264,8 +270,9 @@ _query_set(other._query_set), _host(other._host), _host_set(other._host_set),
 _port(other._port), _port_set(other._port_set), _auth(other._auth),
 _auth_set(other._auth_set), _cookie(other._cookie), _cookie_set(other._cookie_set),
 _should_reject(other._should_reject), _persistent(other._persistent),
-_chunked(other._chunked), _body_length(other._body_length),
-_body_length_set(other._body_length_set), _err_code(other._err_code)
+_chunked(other._chunked),
+_body_length_set(other._body_length_set), _err_code(other._err_code),
+_err_code_set(other._err_code_set)
 {}
 
 GetRequest	&GetRequest::operator=(const GetRequest &other)
@@ -287,9 +294,10 @@ GetRequest	&GetRequest::operator=(const GetRequest &other)
 		_should_reject = other._should_reject;
 		_persistent = other._persistent;
 		_chunked = other._chunked;
-		_body_length = other._body_length;
 		_body_length_set = other._body_length_set;
 		_err_code = other._err_code;
+		_err_code_set = other._err_code_set;
+		
 	}
 	return (*this);
 }
@@ -305,12 +313,9 @@ bool	GetRequest::isErrCodeSet(void) const
 
 int	GetRequest::getErrCode(void) const
 {
-	return (_err_code);
-}
-
-long	GetRequest::getBodyLength(void) const
-{
-	return (_body_length);
+	if (this->isErrCodeSet())
+		return (this->_err_code);
+	return (400);
 }
 
 bool	GetRequest::isBodyLengthSet(void) const
@@ -378,7 +383,7 @@ std::string	GetRequest::getHost(void) const
 	return (_host);
 }
 
-int			GetRequest::getPort(void) const
+int	GetRequest::getPort(void) const
 {
 	return (_port);
 }
@@ -391,15 +396,4 @@ std::map<std::string,std::string>	GetRequest::getAuth(void) const
 std::map<std::string,std::string>	GetRequest::getCookie(void) const
 {
 	return (_cookie);
-}
-
-void	GetRequest::setErrCode(void)
-{
-	if (_err_code_set)
-		return ;
-	if (_body_length_set && _chunked)
-	{
-		_err_code = 501;
-		_err_code_set = true;
-	}
 }

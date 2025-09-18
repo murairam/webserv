@@ -240,17 +240,18 @@ void	ConfigLoader::parse(std::string path)
 					goto use_default_server;
 				}
 				temp_word.erase(temp_word.size() - 1);
-				DIR	*folder = ::opendir(temp_word.c_str());
+				Directory	folder(temp_word);
 #ifdef	_DEBUG
 				std::cout<<"Parser: location root path: "<<temp_word<<std::endl;
 #endif
-				if (!folder)
+				folder.ft_opendir();
+				if (!folder.isOpen())
 				{
-					int	temp_fd = ::open(temp_word.c_str(), O_RDONLY);
+					int	temp_fd = ::open(temp_word.c_str(), O_WRONLY | O_NOFOLLOW);
 					if (temp_fd < 0)
 					{
 						err_code = errno;
-						std::cerr<<path<<":"<<_currline<<": Unable to open the folder/file '"<<temp_word<<"': "<<std::strerror(err_code)<<std::endl;
+						std::cerr<<path<<":"<<_currline<<": Unable to open the file '"<<temp_word<<"': "<<std::strerror(err_code)<<std::endl;
 						goto use_default_server;
 					}
 					::close(temp_fd);
@@ -258,7 +259,7 @@ void	ConfigLoader::parse(std::string path)
 					continue;
 				}
 				_curr_location.setRoot(temp_word);
-				closedir(folder);
+				folder.ft_closedir();
 			}
 			else if (keyword.size() == 1 && keyword[0] == '{')
 				inside_bracket++;

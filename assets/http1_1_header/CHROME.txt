@@ -1,0 +1,72 @@
+GET / HTTP/1.1
+Host: 127.0.0.1:30000
+Connection: keep-alive
+sec-ch-ua: "Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Linux"
+DNT: 1
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: none
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: en,zh-CN;q=0.9,zh;q=0.8,fr-FR;q=0.7,fr;q=0.6,zh-TW;q=0.5
+
+
+HTTP/1.1 200 OK
+Server: nginx/1.26.3 (Ubuntu)
+Date: Wed, 17 Sep 2025 17:53:01 GMT
+Content-Type: text/html
+Last-Modified: Tue, 16 Sep 2025 17:12:58 GMT
+Transfer-Encoding: chunked
+Connection: keep-alive
+ETag: W/"68c99a9a-267"
+Content-Encoding: gzip
+
+18d
+..........uRMo.0...W.='..b.G30t+.S{.6..X.%D..%73....q.Sw..H>.G..|}.?.|.....*.v.Z.U_..?(t9...i.....k@.RgIPK........9..@...`.O{......r.....>Q.CD...>.N5.U.S...}..8...7...b...=.
+.Le[.}....*.h.j^.-F>..[^......<A!1.|....... ..(A~!.......~
+a..J....&...O>
+;x.X.YF.z?L.....3..<...=.ji...r
+>...M.R]..Pz.c.
+c ,$..........[W..h}Y....o.+6...9.n.}.....])E....x..X.C)..R
+^)......a:].......uj.P...F.nA....g...g...
+0
+
+
+GET /favicon.ico HTTP/1.1
+Host: 127.0.0.1:30000
+Connection: keep-alive
+sec-ch-ua-platform: "Linux"
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36
+sec-ch-ua: "Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"
+DNT: 1
+sec-ch-ua-mobile: ?0
+Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: no-cors
+Sec-Fetch-Dest: image
+Referer: http://127.0.0.1:30000/
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: en,zh-CN;q=0.9,zh;q=0.8,fr-FR;q=0.7,fr;q=0.6,zh-TW;q=0.5
+
+
+HTTP/1.1 404 Not Found
+Server: nginx/1.26.3 (Ubuntu)
+Date: Wed, 17 Sep 2025 17:53:01 GMT
+Content-Type: text/html
+Transfer-Encoding: chunked
+Connection: keep-alive
+Content-Encoding: gzip
+
+b9
+............1..0..w..pn:..*N!.(8."...;.@z........8;:...=.O.X;5.IC...6:R..
+.>..7.R.E)^HBK.mg..G
+J.....).w.......C..b./az.......C...M..4.4..
+...w]:..i......|Mp
+..].....Q.dY.....-..K.;4...
+0
+

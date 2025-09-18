@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 20:56:03 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/18 20:33:38 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,6 @@
 # include "Header.hpp"
 # include "debug.hpp"
 
-/*
 int	main(int argc, char **argv, char **envp)
 {
 	try
@@ -47,9 +46,10 @@ int	main(int argc, char **argv, char **envp)
 		std::cerr<<"Non-standard exception caught"<<std::endl;
 	}
 	return (0);
-}*/
+}
 
 /* this one is to test Get/Post/Delete Request parsing */
+/*
 int	main(int argc, char **argv, char **envp)
 {
 	try
@@ -57,9 +57,11 @@ int	main(int argc, char **argv, char **envp)
 		(void)argc;
 		(void)argv;
 		(void)envp;
-		const std::string	s(GET_REQUEST);
-		std::cout<<s<<std::endl;
-		Header	test(s);
+		std::istringstream	input(GET_REQUEST);
+		std::istringstream	iss(GET_REQUEST);
+		std::string	str(iss.str());
+		std::cout<<str<<std::endl;
+		Header	test(input);
 		if (test.shouldReject())
 			return (1);
 	}
@@ -72,4 +74,4 @@ int	main(int argc, char **argv, char **envp)
 		std::cerr<<"Non-standard exception caught"<<std::endl;
 	}
 	return (0);
-}
+}*/

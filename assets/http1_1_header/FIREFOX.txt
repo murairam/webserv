@@ -1,0 +1,63 @@
+GET / HTTP/1.1
+Host: 127.0.0.1:30000
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br, zstd
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+Priority: u=0, i
+
+
+HTTP/1.1 200 OK
+Server: nginx/1.26.3 (Ubuntu)
+Date: Wed, 17 Sep 2025 17:54:59 GMT
+Content-Type: text/html
+Last-Modified: Tue, 16 Sep 2025 17:12:58 GMT
+Transfer-Encoding: chunked
+Connection: keep-alive
+ETag: W/"68c99a9a-267"
+Content-Encoding: gzip
+
+18d
+..........uRMo.0...W.='..b.G30t+.S{.6..X.%D..%73....q.Sw..H>.G..|}.?.|.....*.v.Z.U_..?(t9...i.....k@.RgIPK........9..@...`.O{......r.....>Q.CD...>.N5.U.S...}..8...7...b...=.
+.Le[.}....*.h.j^.-F>..[^......<A!1.|....... ..(A~!.......~
+a..J....&...O>
+;x.X.YF.z?L.....3..<...=.ji...r
+>...M.R]..Pz.c.
+c ,$..........[W..h}Y....o.+6...9.n.}.....])E....x..X.C)..R
+^)......a:].......uj.P...F.nA....g...g...
+0
+
+
+GET /favicon.ico HTTP/1.1
+Host: 127.0.0.1:30000
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0
+Accept: image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br, zstd
+Connection: keep-alive
+Referer: http://127.0.0.1:30000/
+Sec-Fetch-Dest: image
+Sec-Fetch-Mode: no-cors
+Sec-Fetch-Site: same-origin
+Priority: u=6
+
+
+HTTP/1.1 404 Not Found
+Server: nginx/1.26.3 (Ubuntu)
+Date: Wed, 17 Sep 2025 17:54:59 GMT
+Content-Type: text/html
+Transfer-Encoding: chunked
+Connection: keep-alive
+Content-Encoding: gzip
+
+7b
+............(.......HML..).,.I.310Q../Qp./.K..........&..T..$.......d.......C.Af..Ayy..y...zFfz.
+..I.y%...j.a..C]....b.....
+0
+

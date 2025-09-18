@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/16 23:54:37 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 23:24:17 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/18 20:27:39 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,13 +40,12 @@ class	PostRequest
 		std::string	_body;
 		bool		_body_set;
 		
-		void	process(const std::string &s);
-		void	setErrCode(void);
+		void	process(std::istream &s);
 
 	public:
 		PostRequest(void);
 		~PostRequest(void);
-		PostRequest(std::string s);
+		PostRequest(std::istream &s);
 		PostRequest(const PostRequest &other);
 		PostRequest	&operator=(const PostRequest &other);
 		bool	isTargetSet(void) const;
