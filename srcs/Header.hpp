@@ -1,39 +1,43 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Directory.hpp                                      :+:      :+:    :+:   */
+/*   Header.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/14 13:23:09 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:30:39 by yanli            ###   ########.fr       */
+/*   Created: 2025/09/16 23:24:15 by yanli             #+#    #+#             */
+/*   Updated: 2025/09/17 20:45:36 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef DIRECTORY_HPP
-# define DIRECTORY_HPP
+#ifndef HEADER_HPP
+# define HEADER_HPP
 
 # include "_headers.hpp"
 # include "SysError.hpp"
+# include "GetRequest.hpp"
+# include "PostRequest.hpp"
+# include "DeleteRequest.hpp"
 
-/* Directory wraps opendir, readdir and closedir */
-class	Directory
+class	Header
 {
 	private:
-		DIR			*_dir;
-		std::string	_path_cached;
+		int			_request_method;
+		GetRequest	_get;
+		PostRequest	_post;
+		DeleteRequest	_delete;
+		bool		_should_reject;
 
-	public:	
-		Directory(void);
-		Directory(std::string path);
-		Directory(const Directory &other);
-		Directory	&operator=(const Directory &other);
-		~Directory(void);
+		bool	process(const std::string &str);
 
-		bool	isOpen(void) const;
-		void	ft_opendir(const std::string &path);
-		void	ft_closedir(void);
+	public:
+		Header(void);
+		~Header(void);
+		Header(const Header &other);
+		Header	&operator=(const Header &other);
+		Header(std::string s);
 
-		std::string	nextEntry(void);
+		bool	shouldReject(void) const;
 };
+
 #endif

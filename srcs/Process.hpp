@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 14:42:57 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 15:25:19 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:41:15 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,7 @@ class	Process
 		/* custom execve */
 		static void	ft_execve(const std::string &path, char *const argv[], char *const envp[]);
 		/* custom wait, waitpid */
-		int	ft_wait(int option);
+		int			ft_wait(void);
 		static int	ft_waitpid(pid_t pid, int option);
 		/* kill with signal */
 		void	killsig(int sig) const;

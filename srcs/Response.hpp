@@ -1,36 +1,22 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   SysError.hpp                                       :+:      :+:    :+:   */
+/*   Response.hpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/13 23:27:01 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:42:16 by yanli            ###   ########.fr       */
+/*   Created: 2025/09/17 01:25:04 by yanli             #+#    #+#             */
+/*   Updated: 2025/09/17 01:25:43 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef SYSERROR_HPP
-# define SYSERROR_HPP
+#ifndef RESPONSE_HPP
+# define RESPONSE_HPP
 
 # include "_headers.hpp"
 
-class	SysError: public std::exception
+class	Response
 {
-	private:
-		int			_errno;
-		std::string	_msg;
-		
-	public:
-		SysError(void);
-		SysError(const char *msg, int errno_value);
-		SysError(const std::string &msg, int errno_value);
-		SysError(const SysError &other);
-		SysError	&operator=(const SysError &other);
-		virtual	~SysError(void) throw();
 
-		int			getErrno(void) const;
-		const char	*what(void) const throw();
 };
-
 #endif

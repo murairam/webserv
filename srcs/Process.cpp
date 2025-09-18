@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 14:42:47 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 15:32:15 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:40:53 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ pid_t	Process::ft_fork(void)
 {
 	pid_t	temp;
 
-	temp = fork();
+	temp = ::fork();
 	if (temp < 0)
 		throw SysError("fork failed", errno);
 	_pid = temp;
@@ -43,21 +43,21 @@ pid_t	Process::ft_fork(void)
 /* custom execve */
 void	Process::ft_execve(const std::string &path, char *const argv[], char *const envp[])
 {
-	if (execve(path.c_str(), argv, envp))
+	if (::execve(path.c_str(), argv, envp))
 		throw SysError("execve failed: " + path, errno);
 }
 
 /* custom wait, waitpid */
-int	Process::ft_wait(int option)
+int	Process::ft_wait(void)
 {
 	int		status;
 	pid_t	pid;
 
 	if (_pid <= 0)
 		throw SysError("wait on invalid pid", ECHILD);
-	pid = waitpid(_pid, &status, option);
+	pid = ::wait(&status);
 	if (pid < 0)
-		throw SysError("waitpid failed", errno);
+		throw SysError("wait failed", errno);
 	return (status);
 }
 
@@ -66,7 +66,7 @@ int	Process::ft_waitpid(pid_t pid, int option)
 	int		status;
 	pid_t	r;
 
-	r = waitpid(pid, &status, option);
+	r = ::waitpid(pid, &status, option);
 	if (r < 0)
 		throw SysError("waitpid failed", errno);
 	return (status);
@@ -77,7 +77,7 @@ void	Process::killsig(int sig) const
 {
 	if (_pid <= 0)
 		throw SysError("kill on invalid pid", ESRCH);
-	if (kill(_pid, sig))
+	if (::kill(_pid, sig))
 		throw SysError("kill failed", errno);
 }
 
@@ -85,7 +85,7 @@ void	Process::signalset(int sig, void (*handler)(int))
 {
 	void	(*r)(int);
 	
-	r = signal(sig, handler);
+	r = ::signal(sig, handler);
 	if (r == SIG_ERR)
 		throw SysError("signal failed", errno);
 }

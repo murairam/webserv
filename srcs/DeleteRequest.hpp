@@ -1,36 +1,30 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   SysError.hpp                                       :+:      :+:    :+:   */
+/*   DeleteRequest.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/13 23:27:01 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:42:16 by yanli            ###   ########.fr       */
+/*   Created: 2025/09/16 23:53:52 by yanli             #+#    #+#             */
+/*   Updated: 2025/09/17 20:42:55 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef SYSERROR_HPP
-# define SYSERROR_HPP
+#ifndef	DELETEREQUEST_HPP
+# define DELETEREQUEST_HPP
 
 # include "_headers.hpp"
 
-class	SysError: public std::exception
+class	DeleteRequest
 {
 	private:
-		int			_errno;
-		std::string	_msg;
-		
+	
 	public:
-		SysError(void);
-		SysError(const char *msg, int errno_value);
-		SysError(const std::string &msg, int errno_value);
-		SysError(const SysError &other);
-		SysError	&operator=(const SysError &other);
-		virtual	~SysError(void) throw();
-
-		int			getErrno(void) const;
-		const char	*what(void) const throw();
+		DeleteRequest(void);
+		DeleteRequest(std::string s);
+		~DeleteRequest(void);
+		DeleteRequest(const DeleteRequest &other);
+		DeleteRequest	&operator=(const DeleteRequest &other);
+		bool	shouldReject(void) const;
 };
-
 #endif

@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 12:42:21 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/14 13:19:28 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/16 16:39:02 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,14 +105,14 @@ void	Socket::listenOn(int backlog) const
 	if (listen(_fd.getFD(), backlog) < 0)
 		throw SysError("Unable to listen to socket", errno);
 }
-		
+
 Socket	Socket::acceptOne(sockaddr_storage &peer_sa, socklen_t &peer_len) const
 {
 	int	fd;
 
 	peer_len = sizeof(peer_sa);
-	memset(&peer_sa, 0, sizeof(peer_sa));
-	fd = accept(_fd.getFD(), reinterpret_cast<struct sockaddr*>(&peer_sa), &peer_len);
+	::memset(&peer_sa, 0, sizeof(peer_sa));
+	fd = ::accept(_fd.getFD(), reinterpret_cast<struct sockaddr*>(&peer_sa), &peer_len);
 	if (fd < 0)
 		throw SysError("Unable to accept a socket", errno);
 	return (Socket(fd, true));
@@ -121,7 +121,7 @@ Socket	Socket::acceptOne(sockaddr_storage &peer_sa, socklen_t &peer_len) const
 /* Connect to a socket */
 void	Socket::connectTo(const sockaddr *sa, socklen_t len) const
 {
-	if (connect(_fd.getFD(), sa, len) < 0)
+	if (::connect(_fd.getFD(), sa, len) < 0)
 		throw SysError("Unable to connect to socket", errno);
 }
 
@@ -130,7 +130,7 @@ ssize_t	Socket::sendIO(const void *buf, size_t len, int flags) const
 {
 	ssize_t	n;
 
-	n = send(_fd.getFD(), buf, len, flags);
+	n = ::send(_fd.getFD(), buf, len, flags);
 	if (n < 0)
 	{
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -144,7 +144,7 @@ ssize_t	Socket::recvIO(void *buf, size_t len, int flags) const
 {
 	ssize_t	n;
 
-	n = recv(_fd.getFD(), buf, len, flags);
+	n = ::recv(_fd.getFD(), buf, len, flags);
 	if (n < 0)
 	{
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -153,4 +153,3 @@ ssize_t	Socket::recvIO(void *buf, size_t len, int flags) const
 	}
 	return (0);
 }
-
