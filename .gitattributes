@@ -1,0 +1,2 @@
+*.cpp merge=ours42header
+*.hpp merge=ours42header
