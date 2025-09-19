@@ -18,7 +18,7 @@ ConfigLoader::ConfigLoader(std::string path)
 :_path(path), _servers(), _use_default_server(true),
 _server_count(0), _server_index(-1), _default_server(),
 _curr_server(), _curr_location(), _curr_endpoint(), _currline(0),
-_fatal_error(false)
+_fatal_error(false), _root_is_folder(false)
 {
 	parse(path);
 }
@@ -433,7 +433,9 @@ _use_default_server(other._use_default_server),
 _server_count(other._server_count), _server_index(other._server_index),
 _default_server(other._default_server), _curr_server(other._curr_server),
 _curr_location(other._curr_location), _curr_endpoint(other._curr_endpoint),
-_currline(other._currline), _fatal_error(other._fatal_error) {}
+_currline(other._currline), _fatal_error(other._fatal_error),
+_root_is_folder(other._root_is_folder)
+{}
 
 ConfigLoader	&ConfigLoader::operator=(const ConfigLoader &other)
 {
@@ -450,6 +452,7 @@ ConfigLoader	&ConfigLoader::operator=(const ConfigLoader &other)
 		_curr_endpoint = other._curr_endpoint;
 		_currline = other._currline;
 		_fatal_error = other._fatal_error;
+		_root_is_folder = other._root_is_folder;
 	}
 	return (*this);
 }

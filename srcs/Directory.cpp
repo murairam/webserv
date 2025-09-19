@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:02 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/18 14:06:30 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/18 20:49:50 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,8 @@ Directory	&Directory::operator=(const Directory &other)
 
 Directory::~Directory(void)
 {
-	::closedir(_dir);
+	if (_dir)
+		::closedir(_dir);
 }
 bool	Directory::isOpen(void) const
 {

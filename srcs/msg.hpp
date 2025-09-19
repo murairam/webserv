@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 11:41:03 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 13:33:12 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/18 21:18:38 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,17 @@ enum methods_bitmask
 	HEAD_MASK		= (1 << 6)
 };
 # endif /* METHODS_BITMASK */
+
+# ifndef EVENT_BITMASK
+#  define EVENT_BITMASK
+enum event_bitmask
+{
+	EVENT_NONE = 0,
+	EVENT_READ = (1 << 0),
+	EVENT_WRITE = (1 << 1),
+	EVENT_ERR = (1 << 2)
+};
+# endif /* EVENT_BITMASK */
 
 # ifndef HTTP_CODE_MSG
 #  define HTTP_CODE_MSG
