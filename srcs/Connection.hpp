@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 14:16:35 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 14:35:57 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/19 14:54:57 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,6 @@ class	Connection: public IFdHandler
 	private:
 		int			_fd;
 		EventLoop	*_loop;
-		std::string	_server_name;
 		std::string	_server_name;
 		std::string	_inbuf;
 		std::string	_outbuf;
