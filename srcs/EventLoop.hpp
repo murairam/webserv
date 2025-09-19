@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/18 21:05:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/18 22:07:58 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 00:28:04 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 # define EVENTLOOP_HPP
 
 # include "_headers.hpp"
+# include "SysError.hpp"
 
 class	IFdHandler;
 

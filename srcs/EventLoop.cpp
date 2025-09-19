@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:57:27 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 00:57:28 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 00:31:16 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,13 +26,27 @@ namespace
 	
 	bool	set_nonblock_fd(int fd)
 	{
-		int	flags = ::fcntl(fd, F_GETFL, 0);
+		bool	ret = true;
 
-		if (flags < 0)
-			return (false);
-		if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
-			return (false);
-		return (true);
+		try
+		{
+			int	flags = ::fcntl(fd, F_GETFL, 0);
+			if (flags < 0)
+				throw SysError("\n---fcntl failed (EventLoop.cpp:33)", errno);
+			if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+				throw SysError("\n---fcntl failed (EventLoop.cpp:36)", errno);
+		}
+		catch (const std::exception &e)
+		{
+			std::cerr<<e.what()<<std::endl;
+			ret = false;
+		}
+		catch (...)
+		{
+			std::cerr<<"Non-standard exception caught"<<std::endl;
+			ret = false;
+		}
+		return (ret);
 	}
 
 	void	drain_pipe_once(int fd)
@@ -61,8 +75,8 @@ _wakeup_wr_fd(-1), _should_stop(false), _timeout(0)
 		if (!set_nonblock_fd(_wakeup_rd_fd)
 			|| !set_nonblock_fd(_wakeup_wr_fd))
 		{
-			::close(_wakeup_rd_fd);
-			::close(_wakeup_wr_fd);
+			(void)::close(_wakeup_rd_fd);
+			(void)::close(_wakeup_wr_fd);
 			_wakeup_rd_fd = -1;
 			_wakeup_wr_fd = -1;
 		}

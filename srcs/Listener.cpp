@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:11:14 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 00:09:14 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 00:34:02 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,9 +23,9 @@ namespace
 		{
 			int	flags = ::fcntl(fd, F_GETFL, 0);
 			if (flags < 0)
-				throw SysError("\n---fcntl failed (Listener.cpp:23)", errno);
+				throw SysError("\n---fcntl(F_GETFL) failed (Listener.cpp:23)", errno);
 			if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
-				throw SysError("\n---fcntl failed (Listener.cpp:26)", errno);
+				throw SysError("\n---fcntl(F_GETFL) failed (Listener.cpp:26)", errno);
 		}
 		catch (const std::exception &e)
 		{
@@ -128,9 +128,9 @@ bool	Listener::listen(int backlog)
 
 		s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (s < 0)
-			throw SysError ("\n---socket failed", errno);
+			throw SysError ("\n---socket failed (Listener.cpp:129)", errno);
 		if (::setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
-			throw SysError ("\n---socket failed", errno);
+			throw SysError ("\n---setsockopt failed (Listener.cpp:132)", errno);
 		if (!set_nonblock_fd(s))
 		{
 			(void)::close(s);

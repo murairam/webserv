@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:02 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 20:55:03 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 00:27:04 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,7 +85,10 @@ std::string	Directory::nextEntry(void)
 	struct dirent	*entry;
 
 	if (!_dir)
-		throw SysError("readdir on closed DIR*", EBADF);
+	{
+		std::cerr<<"readdir on closed DIR*"<<std::endl;
+		return (std::string());
+	}
 	errno = 0;
 	while (1)
 	{
@@ -98,7 +101,7 @@ std::string	Directory::nextEntry(void)
 			if (_err_code)
 			{
 				_err_code_set = true;
-				throw SysError("readdir failed", _err_code);
+				std::cerr<<"readdir failed: "<<std::strerror(_err_code)<<std::endl;
 				return (std::string());
 			}
 		}
