@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   EventLoop.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/18 21:05:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/18 22:07:58 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/19 13:20:44 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,7 @@ class	EventLoop
 			int			_events;
 			IFdHandler	*_handler;
 			std::time_t	_last_active;
+			bool 		_owned_by_eventloop;
 		};
 
 		std::map<int,Entry>	_entries;
@@ -35,7 +36,7 @@ class	EventLoop
 		int					_wakeup_wr_fd;
 		bool				_should_stop;
 		unsigned			_timeout;
-		
+
 	public:
 		EventLoop(void);
 		~EventLoop(void);
@@ -43,7 +44,11 @@ class	EventLoop
 		EventLoop	&operator=(const EventLoop &other);
 
 		/* engage a FD with a IFdHandler */
-		void	add(int fd, int events, IFdHandler *handler);
+		void	add(int fd, int events, IFdHandler *handler, bool take_ownership = false);
+		/*method to take ownership of a fd*/
+		void	take_ownership(int fd);
+		/*method to release ownership of a fd*/
+		void	release_ownership(int fd);
 		/* disengage a FD */
 		void	remove(int fd);
 		/* change events for an engaged FD */

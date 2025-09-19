@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Socket.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 12:42:21 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 16:39:02 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/19 14:05:59 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@ Socket::Socket(void):_fd(-1) {}
 Socket::Socket(int domain, int type, int protocol):_fd(-1)
 {
 	int	fd;
-	
+
 	fd = socket(domain, type, protocol);
 	if (fd < 0)
 		throw SysError("socket failed", errno);
@@ -67,7 +67,7 @@ void	Socket::setReuseAddr(bool enabled) const
 {
 	int	x;
 	int	rv;
-	
+
 	if (enabled)
 		x = 1;
 	else
@@ -126,30 +126,40 @@ void	Socket::connectTo(const sockaddr *sa, socklen_t len) const
 }
 
 /* Input/Output */
-ssize_t	Socket::sendIO(const void *buf, size_t len, int flags) const
+ssize_t Socket::sendIO(const void *buf, size_t len, int flags) const
 {
-	ssize_t	n;
+    ssize_t n;
 
-	n = ::send(_fd.getFD(), buf, len, flags);
-	if (n < 0)
-	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return (0);
-		throw SysError("Unable to send to socket", errno);
-	}
-	return (n);
+#ifdef __APPLE__
+    n = ::send(_fd.getFD(), buf, len, flags | MSG_DONTWAIT);
+#else
+    n = ::send(_fd.getFD(), buf, len, flags);
+#endif
+
+    if (n < 0)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return (0);
+        throw SysError("Unable to send to socket", errno);
+    }
+    return (n);
 }
 
-ssize_t	Socket::recvIO(void *buf, size_t len, int flags) const
+ssize_t Socket::recvIO(void *buf, size_t len, int flags) const
 {
-	ssize_t	n;
+    ssize_t n;
 
-	n = ::recv(_fd.getFD(), buf, len, flags);
-	if (n < 0)
-	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return (0);
-		throw SysError("Unable to receive via socket", errno);
-	}
-	return (0);
+#ifdef __APPLE__
+    n = ::recv(_fd.getFD(), buf, len, flags | MSG_DONTWAIT);
+#else
+    n = ::recv(_fd.getFD(), buf, len, flags);
+#endif
+
+    if (n < 0)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return (0);
+        throw SysError("Unable to receive via socket", errno);
+    }
+    return (n);
 }

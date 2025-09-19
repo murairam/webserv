@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   _headers.hpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:18:53 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/18 21:04:37 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/19 14:07:01 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,14 @@
 # ifndef _DEFAULT_SOURCE
 #  define _DEFAULT_SOURCE
 # endif
+
+#ifdef __APPLE__
+# include <sys/event.h>  /* for kqueue if we decide to use it for macOS */
+#endif
+
+#ifdef __LINUX__
+# include <sys/epoll.h>  // for epoll on Linux
+#endif
 
 # include <stdexcept>
 # include <vector>

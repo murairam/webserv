@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   PostRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/16 23:54:48 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/18 19:26:22 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/19 13:16:37 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,7 @@ void	PostRequest::process(std::istream &s)
 	std::string			keyword;
 	std::string			valueword;
 	bool				toggle = true;
-	
+
 	bool				header_ended = false;
 
 	while (std::getline(s, line))
@@ -169,7 +169,7 @@ void	PostRequest::process(std::istream &s)
 			auth_value.clear();
 			iss>>auth_type;
 			iss>>std::ws;
-			if (!std::getline(iss, auth_value, '\r') || auth_type.empty())
+			if (!std::getline(iss, auth_value, '\r') || auth_type.empty() || auth_value.empty())
 				goto reject_400;
 			auth_value = trim(auth_value);
 			if (auth_value.empty())

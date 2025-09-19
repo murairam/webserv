@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:51:23 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/18 11:39:18 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/19 14:05:00 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -133,19 +133,28 @@ FD	FD::openRW(const std::string &path, bool create, mode_t mode)
  * Subject compliance: poll() and fcntl() are allowed and portable on both Linux and macOS.
  * Platform-specific guards are present for future maintainability.
  */
-void	FD::setNonBlockingFD(bool enabled)
+void FD::setNonBlockingFD(bool enabled)
 {
-	int	flags = ::fcntl(_fd, F_GETFL, 0);
-	int	rv;
-	if (flags < 0)
-		throw SysError("fcntl(F_GETFL) failed", errno);
-	if (enabled)
-		flags |= O_NONBLOCK;
-	else
-		flags &= ~O_NONBLOCK;
-	rv = ::fcntl(_fd, F_SETFL, flags);
-	if (rv < 0)
-		throw SysError("fcntl(F_SETFL) failed", errno);
+    int flags = ::fcntl(_fd, F_GETFL, 0);
+    int rv;
+    if (flags < 0)
+        throw SysError("fcntl(F_GETFL) failed", errno);
+
+    if (enabled)
+        flags |= O_NONBLOCK;
+    else
+        flags &= ~O_NONBLOCK;
+
+    rv = ::fcntl(_fd, F_SETFL, flags);
+    if (rv < 0)
+        throw SysError("fcntl(F_SETFL) failed", errno);
+
+#ifdef __APPLE__
+    /* macOS specific*/
+    rv = ::fcntl(_fd, F_SETFD, FD_CLOEXEC);
+    if (rv < 0)
+        throw SysError("fcntl(F_SETFD, FD_CLOEXEC) failed", errno);
+#endif
 }
 
 bool	FD::isNonBlockingFD(void) const

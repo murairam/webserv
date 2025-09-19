@@ -6,7 +6,7 @@
 #    By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/09/19 12:58:07 by mmiilpal         ###   ########.fr        #
+#    Updated: 2025/09/19 14:21:04 by mmiilpal         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,11 +18,17 @@ CXX				= c++
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 	PLATFORM_FLAGS = -D__APPLE__
-else
+	# Add macOS specific linker flags if needed
+	LDFLAGS =
+else ifeq ($(UNAME_S),Linux)
 	PLATFORM_FLAGS = -D__LINUX__
+	LDFLAGS =
+else
+	PLATFORM_FLAGS =
+	LDFLAGS =
 endif
 
-CXXFLAGS		= -Wall -Wextra -Werror -std=c++98 $(PLATFORM_FLAGS)
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 $(PLATFORM_FLAGS)
 
 SRCS_DIR		= ./srcs
 
@@ -31,7 +37,7 @@ SRCS_FILES		= main.cpp Endpoint.cpp LocationConfig.cpp ServerConfig.cpp \
 				Directory.cpp Process.cpp utility.cpp ConfigLoader.cpp \
 				Header.cpp GetRequest.cpp DeleteRequest.cpp PostRequest.cpp \
 				CodePage.cpp timestring.cpp EventLoop.cpp IFdHandler.cpp \
-				Listener.cpp
+				Listener.cpp Response.cpp
 
 SRCS			= $(addprefix $(SRCS_DIR)/,$(SRCS_FILES))
 
