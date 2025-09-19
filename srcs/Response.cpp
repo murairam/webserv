@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 01:24:56 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 20:59:41 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/19 21:25:15 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -179,9 +179,25 @@ std::string	Response::generateDirectoryListingHTML(const std::string &path, cons
 	Directory		dir(path);
 	std::string		entry;
 
-	html = "<!DOCTYPE html>\n<html><head><title>Index of " + uri + "</title></head>\n";
-	html += "<body><h1>Index of " + uri + "</h1><hr><pre>\n";
+	html = "<!DOCTYPE html>\n<html><head><title>Index of " + escapeHTML(uri) + "</title></head>\n";
+	html += "<body><h1>Index of " + escapeHTML(uri) + "</h1><hr><pre>\n";
 
+	if (uri != "/" && !uri.empty())
+	{
+		std::string	parent = uri;
+		/* no trailing slash besides root */
+		if (parent.size() > 1 && parent[parent.size() - 1] == '/')
+			parent.erase(parent.size() - 1);
+		/* remove the last part */
+		std::string::size_type	pos = parent.find_last_of('/');
+		if (pos == std::string::npos || !pos)
+			parent = '/';
+		else
+			parent = parent.substr(0, pos) + "/";
+
+		html += "<a href=\"" + parent + "\">../</a>\n";
+	}
+	
 	dir.ft_opendir();
 	while (!(entry = dir.nextEntry()).empty())
 	{
@@ -257,3 +273,29 @@ void	Response::debug(void) const
 	std::cout << "===========================" << std::endl;
 }
 #endif
+
+std::string	Response::escapeHTML(const std::string &s) const
+{
+	std::string				ret;
+	std::string::size_type	i = 0;
+
+	ret.reserve(s.size());
+	while (i < s.size())
+	{
+		char	c = s[i];
+		if (c == '&')
+			ret += "&amp;";
+		else if (c == '<')
+			ret += "&lt;";
+		else if (c == '>')
+			ret += "&gt;";
+		else if (c == '"')
+			ret += "&quot;";
+		else if (c == '\'')
+			ret += "&#39;";
+		else
+			ret += c;
+		i++;
+	}
+	return (ret);
+}
