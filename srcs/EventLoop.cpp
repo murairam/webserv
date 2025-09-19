@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   EventLoop.cpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:57:27 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 13:28:17 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/19 00:57:28 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ namespace
 			(void)::write(g_wakeup, "1", 1);
 		(void)sig;
 	}
-
+	
 	bool	set_nonblock_fd(int fd)
 	{
 		int	flags = ::fcntl(fd, F_GETFL, 0);
@@ -113,7 +113,7 @@ EventLoop	&EventLoop::operator=(const EventLoop &other)
 		_scratch_evs.clear();
 		_should_stop = false;
 		_timeout = other._timeout;
-
+		
 		int	pipefd[2] = {-1, -1};
 
 		if (!::pipe(pipefd))
@@ -143,21 +143,19 @@ EventLoop::~EventLoop(void)
 	while (it != _entries.end())
 	{
 		int	fd = it->first;
-		bool owned = it->second._owned_by_eventloop;
 		it++;
-		/* close only if owned by event loop or if it's the wakeup pipe */
-		if (owned)
+		if (fd != _wakeup_rd_fd)
 			(void)::close(fd);
 	}
 	_entries.clear();
-
+	
 	if (_wakeup_rd_fd > -1)
 		(void)::close(_wakeup_rd_fd);
 	if (_wakeup_wr_fd > -1)
 		(void)::close(_wakeup_wr_fd);
 }
 
-void	EventLoop::add(int fd, int events, IFdHandler *handler, bool take_ownership)
+void	EventLoop::add(int fd, int events, IFdHandler *handler)
 {
 	Entry	e;
 
@@ -165,7 +163,6 @@ void	EventLoop::add(int fd, int events, IFdHandler *handler, bool take_ownership
 	e._events = events;
 	e._handler = handler;
 	e._last_active = getTime();
-	e._owned_by_eventloop = take_ownership;
 	this->_entries[fd] = e;
 }
 
@@ -223,7 +220,7 @@ void	EventLoop::run_once(unsigned timeout)
 			p.events |= POLLIN;
 		if (e._events & EVENT_WRITE)
 			p.events |= POLLOUT;
-
+		
 		/* POLLERR and POLLHUP are delivered by poll() via revents */
 		pfds.push_back(p);
 		_scratch_fds.push_back(e._fd);
@@ -232,7 +229,7 @@ void	EventLoop::run_once(unsigned timeout)
 	}
 	(void)::poll(&pfds[0], pfds.size(), timeout);
 	std::time_t	curr_time = getTime();
-
+	
 	/* If timeout set, enforce idle timeout so no hang up*/
 	if (_timeout)
 	{
@@ -248,7 +245,7 @@ void	EventLoop::run_once(unsigned timeout)
 			}
 			it2++;
 		}
-
+		
 		std::vector<int>::const_iterator	it3 = to_close.begin();
 		while (it3 != to_close.end())
 		{
@@ -265,7 +262,7 @@ void	EventLoop::run_once(unsigned timeout)
 			}
 		}
 	}
-
+	
 	/* make a copy of FDs to avoid iterator invalidation if some FDs are
 		engaged/disengaged during callback; also copy their events;
 	*/
@@ -288,7 +285,7 @@ void	EventLoop::run_once(unsigned timeout)
 		int	fd = ready_fd[i];
 		int	re = ready_ev[i];
 		i++;
-
+		
 		/* wakeup pipe read end */
 		if (fd == _wakeup_rd_fd)
 		{
