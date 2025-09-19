@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Directory.cpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:02 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 14:07:53 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/19 20:55:03 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,14 +20,16 @@ Directory::Directory(std::string path)
 {}
 
 Directory::Directory(const Directory &other)
-:_dir(other._dir), _path(other._path), _err_code(other._err_code), _err_code_set(other._err_code_set)
+:_dir(0), _path(other._path), _err_code(other._err_code), _err_code_set(other._err_code_set)
 {}
 
 Directory	&Directory::operator=(const Directory &other)
 {
 	if (this != &other)
 	{
-		_dir = other._dir;
+		if (_dir)
+			(void)::closedir(_dir);
+		_dir = 0;
 		_path = other._path;
 		_err_code = other._err_code;
 		_err_code_set = other._err_code_set;
@@ -49,6 +51,8 @@ void	Directory::ft_opendir(void)
 {
 	if (this->isOpen())
 		return ;
+	_err_code = 0;
+	_err_code_set = false;
 	_dir = ::opendir(_path.c_str());
 	if (!_dir)
 	{
@@ -76,26 +80,33 @@ void	Directory::ft_closedir(void)
 	_dir = 0;
 }
 
-std::string Directory::nextEntry(void)
+std::string	Directory::nextEntry(void)
 {
-    struct dirent *entry;
+	struct dirent	*entry;
 
-    if (!_dir)
-        throw SysError("readdir on closed DIR*", EBADF);
-
-    errno = 0;
-    entry = ::readdir(_dir);
-    if (!entry)
-    {
-        if (errno)
-            throw SysError("readdir failed", errno);
-        return (std::string());
-    }
-
-    if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..")
-        return (nextEntry()); 
-
-    return (std::string(entry->d_name));
+	if (!_dir)
+		throw SysError("readdir on closed DIR*", EBADF);
+	errno = 0;
+	while (1)
+	{
+		_err_code = 0;
+		_err_code_set = false;
+		entry = ::readdir(_dir);
+		_err_code = errno;
+		if (!entry)
+		{
+			if (_err_code)
+			{
+				_err_code_set = true;
+				throw SysError("readdir failed", _err_code);
+				return (std::string());
+			}
+		}
+		const char	*name = entry->d_name;
+		if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
+			continue;
+		return (std::string(name));
+	}
 }
 
 int	Directory::getErrCode(void) const

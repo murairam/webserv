@@ -3,15 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   Response.hpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 01:25:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 13:59:46 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/19 20:44:52 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef RESPONSE_HPP
 # define RESPONSE_HPP
+
 # include "_headers.hpp"
 # include "CodePage.hpp"
 
