@@ -6,7 +6,7 @@
 #    By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/09/18 11:38:22 by mmiilpal         ###   ########.fr        #
+#    Updated: 2025/09/19 12:58:07 by mmiilpal         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -26,9 +26,12 @@ CXXFLAGS		= -Wall -Wextra -Werror -std=c++98 $(PLATFORM_FLAGS)
 
 SRCS_DIR		= ./srcs
 
-SRCS_FILES 		= 	main.cpp Endpoint.cpp LocationConfig.cpp ServerConfig.cpp \
-					SysError.cpp FD.cpp Pipe.cpp Resolver.cpp Socket.cpp \
-					Directory.cpp Process.cpp utility.cpp ConfigLoader.cpp
+SRCS_FILES		= main.cpp Endpoint.cpp LocationConfig.cpp ServerConfig.cpp \
+				SysError.cpp FD.cpp Pipe.cpp Resolver.cpp Socket.cpp \
+				Directory.cpp Process.cpp utility.cpp ConfigLoader.cpp \
+				Header.cpp GetRequest.cpp DeleteRequest.cpp PostRequest.cpp \
+				CodePage.cpp timestring.cpp EventLoop.cpp IFdHandler.cpp \
+				Listener.cpp
 
 SRCS			= $(addprefix $(SRCS_DIR)/,$(SRCS_FILES))
 

@@ -6,44 +6,31 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:02 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 16:33:25 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/18 20:49:50 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Directory.hpp"
 
-Directory::Directory(void): _dir(0), _path_cached() {}
+Directory::Directory(void)
+: _dir(0), _path(""), _err_code(0), _err_code_set(false) {}
 
-Directory::Directory(std::string path): _dir(0), _path_cached()
-{
-	ft_opendir(path);
-}
+Directory::Directory(std::string path)
+: _dir(0), _path(path), _err_code(0), _err_code_set(false)
+{}
 
 Directory::Directory(const Directory &other)
-:_dir(0), _path_cached(other._path_cached)
-{
-	if (other._dir)
-	{
-		_dir = ::opendir(_path_cached.c_str());
-		if (!_dir)
-			throw SysError("opendir failed: " + _path_cached, errno);
-	}
-}
+:_dir(other._dir), _path(other._path), _err_code(other._err_code), _err_code_set(other._err_code_set)
+{}
 
 Directory	&Directory::operator=(const Directory &other)
 {
 	if (this != &other)
 	{
-		if (_dir)
-			::closedir(_dir);
-		_dir = 0;
-		_path_cached = other._path_cached;
-		if (other._dir)
-		{
-			_dir = ::opendir(_path_cached.c_str());
-			if (!_dir)
-				throw SysError("opendir failed: " + _path_cached, errno);
-		}
+		_dir = other._dir;
+		_path = other._path;
+		_err_code = other._err_code;
+		_err_code_set = other._err_code_set;
 	}
 	return (*this);
 }
@@ -58,20 +45,34 @@ bool	Directory::isOpen(void) const
 	return (_dir != 0);
 }
 
-void	Directory::ft_opendir(const std::string &path)
+void	Directory::ft_opendir(void)
 {
-	if (_dir)
-		::closedir(_dir);
-	_dir = ::opendir(path.c_str());
+	if (this->isOpen())
+		return ;
+	_dir = ::opendir(_path.c_str());
 	if (!_dir)
-		throw SysError("opendir failed: " + path, errno);
-	_path_cached = path;
+	{
+		_err_code = errno;
+		_err_code_set = true;
+		throw SysError("opendir failed on: " + _path + ", ", _err_code);
+	}
+}
+
+void	Directory::setPath(std::string path)
+{
+	_path = path;
 }
 
 void	Directory::ft_closedir(void)
 {
-	if (_dir)
-		::closedir(_dir);
+	if (!_dir)
+		return;
+	if (::closedir(_dir) == -1)
+	{
+		_err_code = errno;
+		_err_code_set = true;
+		throw SysError("closedir failed on: " + _path + ", ", _err_code);
+	}
 	_dir = 0;
 }
 
@@ -92,4 +93,14 @@ std::string	Directory::nextEntry(void)
 	if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..")
 		return (nextEntry());
 	return (std::string(entry->d_name));
+}
+
+int	Directory::getErrCode(void) const
+{
+	return (_err_code);
+}
+
+bool	Directory::isErrCodeSet(void) const
+{
+	return (_err_code_set);
 }
