@@ -6,12 +6,13 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 12:16:05 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 14:08:25 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 00:08:06 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ListenerRegistry.hpp"
 #include "EventLoop.hpp"
+#include "ConnectionManager.hpp"
 
 /* compare which host (then port) came earlier */
 bool	ListenerRegistry::SocketKey::operator<(const SocketKey &s) const
@@ -44,17 +45,18 @@ void	ListenerRegistry::prepare
 		(void)server_name;
 }
 
-int		ListenerRegistry::engage_all(EventLoop &loop, int fd)
+int		ListenerRegistry::engage_all(EventLoop &loop, int backlog, ConnectionManager &manager)
 {
 	int	count = 0;
 	_fd_to_server.clear();
 	_vec_listener.clear();
-	
+
 	std::map<SocketKey,SocketEntry>::iterator	it = _sockets.begin();
 	while (it != _sockets.end())
 	{
 		SocketEntry	&se = it->second;
-		if (se._listener.listen(fd))
+		se._listener.setConnectionManager(&manager);
+		if (se._listener.listen(backlog))
 		{
 			se._listener.engageLoop(loop);
 			/* Record this pair FD<--->server name */

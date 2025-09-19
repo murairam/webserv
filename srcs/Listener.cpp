@@ -6,24 +6,38 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:11:14 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 14:13:22 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 00:09:14 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Listener.hpp"
 #include "EventLoop.hpp"
+#include "ConnectionManager.hpp"
 
 namespace
 {
 	bool	set_nonblock_fd(int fd)
 	{
-		int	flags = ::fcntl(fd, F_GETFL, 0);
-
-		if (flags < 0)
-			return (false);
-		if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
-			return (false);
-		return (true);
+		bool	ret = true;
+		try
+		{
+			int	flags = ::fcntl(fd, F_GETFL, 0);
+			if (flags < 0)
+				throw SysError("\n---fcntl failed (Listener.cpp:23)", errno);
+			if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+				throw SysError("\n---fcntl failed (Listener.cpp:26)", errno);
+		}
+		catch (const std::exception &e)
+		{
+			std::cerr<<e.what()<<std::endl;
+			ret = false;
+		}
+		catch (...)
+		{
+			std::cerr<<"Non-standard exception caught"<<std::endl;
+			ret = false;
+		}
+		return (ret);
 	}
 
 	bool	parse_ipv4(const std::string &host, struct in_addr *ret)
@@ -84,7 +98,8 @@ namespace
 }
 
 Listener::Listener(void)
-:IFdHandler(), _host(), _port(0), _server_name(), _fd(-1), _engaged(false)
+:IFdHandler(), _host(), _port(0), _server_name(), _fd(-1), _engaged(false),
+_loop(0), _conn_mgr(0)
 {}
 
 Listener::~Listener(void)
@@ -98,46 +113,54 @@ Listener::~Listener(void)
 Listener::Listener
 (const std::string &host, int port, const std::string &server_name)
 :IFdHandler(), _host(host), _port(port), _server_name(server_name),
-_fd(-1), _engaged(false)
+_fd(-1), _engaged(false), _loop(0), _conn_mgr(0)
 {}
 
-bool	Listener::listen(int fd)
+bool	Listener::listen(int backlog)
 {
 	struct in_addr		ip;
-	int					s = ::socket(AF_INET, SOCK_STREAM, 0);
+	int					s;
 	int					set = 1;
 	struct sockaddr_in	addr;
+	bool				ret = true;
 
-	if (s < 0)
-		return (false);
-	(void)::setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set));
-	
-	if (!set_nonblock_fd(s))
+	try{
+
+		s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (s < 0)
+			throw SysError ("\n---socket failed", errno);
+		if (::setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
+			throw SysError ("\n---socket failed", errno);
+		if (!set_nonblock_fd(s))
+		{
+			(void)::close(s);
+			ret = false;
+		}
+		std::memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(_port);
+		if (!parse_ipv4(_host, &ip))
+			throw SysError ("\n---parse_ipv4 failed", errno);
+		addr.sin_addr = ip;
+		if (::bind(s, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) < 0)
+			throw SysError ("\n---bind failed", errno);
+		if (::listen(s, backlog) < 0)
+			throw SysError ("\n---listen failed", errno);
+		_fd = s;
+	}
+	catch (const std::exception &e)
 	{
 		(void)::close(s);
-		return (false);
+		std::cerr<<e.what()<<std::endl;
+		ret = false;
 	}
-	std::memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(_port);
-	if (!parse_ipv4(_host, &ip))
+	catch (...)
 	{
 		(void)::close(s);
-		return (false);
+		std::cerr<<"Non-standard exception caught"<<std::endl;
+		ret = false;
 	}
-	addr.sin_addr = ip;
-	if (::bind(s, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) < 0)
-	{
-		(void)::close(s);
-		return (false);
-	}
-	if (::listen(s, fd) < 0)
-	{
-		(void)::close(s);
-		return (false);
-	}
-	_fd = s;
-	return (true);
+	return (ret);
 }
 
 void	Listener::onReadable(int fd)
@@ -154,14 +177,26 @@ void	Listener::onReadable(int fd)
 		len = static_cast<socklen_t>(sizeof(peer));
 		client_fd = ::accept(_fd, reinterpret_cast<struct sockaddr*>(&peer), &len);
 		if (client_fd < 0)
+		{
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				break;
+			if (errno == EINTR)
+				continue;
 			break;
-		if (set_nonblock_fd(client_fd))
+		}
+		if (!set_nonblock_fd(client_fd))
 		{
 			(void)::close(client_fd);
 			continue;
 		}
-		/* This is where Connection should set up */
-		(void)::close(client_fd);
+		if (!_conn_mgr || !_loop)
+		{
+			(void)::close(client_fd);
+			continue;
+		}
+		Connection	*conn = _conn_mgr->establish(client_fd, _server_name, *_loop);
+		if (!conn)
+			(void)::close(client_fd);
 	}
 }
 
@@ -213,6 +248,7 @@ void	Listener::engageLoop(EventLoop &loop)
 {
 	if (_fd < 0 || _engaged)
 		return ;
+	_loop = &loop;
 	loop.add(_fd, EVENT_READ, this);
 	_engaged = true;
 }
@@ -229,10 +265,17 @@ void	Listener::disengageLoop(EventLoop &loop)
 		(void)::close(_fd);
 		_fd = -1;
 	}
+	_loop = 0;
 }
+
+void	Listener::setConnectionManager(ConnectionManager *manager)
+{
+	_conn_mgr = manager;
+}
+
 Listener::Listener(const Listener &other)
 :IFdHandler(other), _host(other._host), _port(other._port), _server_name(other._server_name),
-_fd(-1), _engaged(false) {}
+_fd(-1), _engaged(false), _loop(0), _conn_mgr(0) {}
 
 Listener	&Listener::operator=(const Listener &other)
 {
@@ -245,6 +288,8 @@ Listener	&Listener::operator=(const Listener &other)
 		_server_name = other._server_name;
 		_fd = -1;
 		_engaged = false;
+		_loop = 0;
+		_conn_mgr = 0;
 	}
 	return (*this);
 }

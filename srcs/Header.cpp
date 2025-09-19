@@ -14,13 +14,14 @@
 
 Header::Header(void)
 :_request_method(0), _get(), _post(), _delete(),
-_should_reject(false), _reject_405(false)
+_should_reject(false), _reject_400(false), _reject_405(false)
 {}
 
 Header::Header(const Header &other)
 :_request_method(other._request_method), _get(other._get),
 _post(other._post), _delete(other._delete),
-_should_reject(other._should_reject), _reject_405(other._reject_405)
+_should_reject(other._should_reject), _reject_400(other._reject_400),
+_reject_405(other._reject_405)
 {}
 
 Header	&Header::operator=(const Header &other)
@@ -32,6 +33,7 @@ Header	&Header::operator=(const Header &other)
 		_post = other._post;
 		_delete = other._delete;
 		_should_reject = other._should_reject;
+		_reject_400 = other._reject_400;
 		_reject_405 = other._reject_405;
 	}
 	return (*this);
@@ -41,7 +43,7 @@ Header::~Header(void) {}
 
 Header::Header(std::istream &s)
 :_request_method(0), _get(), _post(), _delete(),
-_should_reject(false), _reject_405(false)
+_should_reject(false), _reject_400(false), _reject_405(false)
 {
 	if (process(s))
 		_should_reject = true;
@@ -53,12 +55,20 @@ int	Header::process(std::istream &s)
 
 	method_word.clear();
 	if (!(s>>method_word))
+	{
+		_reject_400 = true;
 		return (400);
+	}
 	if (method_word == "GET")
 	{
 		_request_method = GET_MASK;
 		_get = GetRequest(s);
-		return (_get.shouldReject());
+		if (_get.shouldReject())
+		{
+			_reject_400 = true;
+			return (_get.getErrCode());
+		}
+		return (0);
 	}
 	else if (method_word == "POST")
 	{
@@ -67,14 +77,25 @@ int	Header::process(std::istream &s)
 #ifdef	_DEBUG
 		std::cout<<"PostRequest debug info of the body part:\n"<<_post.getBody()<<std::endl;
 #endif
-		return (_post.shouldReject());
+		if (_post.shouldReject())
+		{
+			_reject_400 = true;
+			return (_post.getErrCode());
+		}
+		return (0);
 	}
 	else if (method_word == "DELETE")
 	{
 		_request_method = DELETE_MASK;
 		_delete = DeleteRequest(s);
-		return (_delete.shouldReject());
+		if (_delete.shouldReject())
+		{
+			_reject_400 = true;
+			return (_delete.getErrCode());
+		}
+		return (0);
 	}
+	_reject_405 = true;
 	return (405);
 }
 

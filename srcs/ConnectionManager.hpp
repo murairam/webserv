@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef CONNECTIONMANAGR_HPP
+#ifndef CONNECTIONMANAGER_HPP
 # define CONNECTIONMANAGER_HPP
 
 # include "_headers.hpp"

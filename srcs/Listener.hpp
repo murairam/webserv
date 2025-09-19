@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:10:58 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 14:12:45 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/19 23:27:21 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,8 +15,10 @@
 
 # include "_headers.hpp"
 # include "IFdHandler.hpp"
+# include "SysError.hpp"
 
 class	EventLoop;
+class	ConnectionManager;
 
 /*	Listener wraps a non-blocking socket for one pair of host<--->port;
 	It accepts new connections once poll() signals readability
@@ -29,6 +31,8 @@ class	Listener: public IFdHandler
 		std::string	_server_name;
 		int			_fd;
 		bool		_engaged;
+		EventLoop	*_loop;
+		ConnectionManager	*_conn_mgr;
 		
 	public:
 		Listener(const Listener &other);
@@ -51,6 +55,7 @@ class	Listener: public IFdHandler
 		void	engageLoop(EventLoop &loop);
 		/* Disengage, close FD, quit from the event loop */
 		void	disengageLoop(EventLoop &loop);
+		void	setConnectionManager(ConnectionManager *manager);
 
 		int			getFD(void) const;
 		const std::string	&getHost(void) const;

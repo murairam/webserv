@@ -17,6 +17,7 @@
 # include "Listener.hpp"
 
 class	EventLoop;
+class	ConnectionManager;
 
 /*	ListenerRegistry contains all Listener objects;
 	It decides which server handles a new connection
@@ -54,7 +55,7 @@ class	ListenerRegistry
 		/*	Engage all Listeners to that EventLoop;
 			Return the number of successfully opened sockets;
 		*/
-		int		engage_all(EventLoop &loop, int fd);
+		int		engage_all(EventLoop &loop, int backlog, ConnectionManager &manager);
 		void	disengage_all(EventLoop &loop);
 
 		/*		Determine which server should handle this FD;

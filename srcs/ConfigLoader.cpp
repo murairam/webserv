@@ -3,7 +3,7 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigLoader.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 20:40:31 by yanli             #+#    #+#             */
 /*   Updated: 2025/09/15 21:31:23by yanli            ###   ########.fr       */
@@ -12,7 +12,13 @@
 
 #include "ConfigLoader.hpp"
 
-ConfigLoader::ConfigLoader(void) {}
+ConfigLoader::ConfigLoader(void)
+: _path(), _servers(), _use_default_server(true), _server_count(0),
+_server_index(-1), _default_server(), _curr_server(), _curr_location(),
+_curr_endpoint(), _currline(0), _fatal_error(false), _root_is_folder(false)
+{
+	setDefaultServer();
+}
 
 ConfigLoader::ConfigLoader(std::string path)
 :_path(path), _servers(), _use_default_server(true),
@@ -58,7 +64,7 @@ void	ConfigLoader::parse(std::string path)
 		_currline++;
 #ifdef	_DEBUG
 		std::string	context_debug = ((context == GLOBAL) ? "GLOBAL" : (context == SERVER) ? "SERVER" : (context == LOCATION) ? "LOCATION" : "BULLSHIT");
-		std::cout<<"Current context is: "<<context_debug<<std::endl;
+		std::cout<<"Current context is: "<<context_debug<<std::endl; 
 #endif
 		if (line.empty() || line[0] == '#')
 			continue;
@@ -294,7 +300,7 @@ void	ConfigLoader::parse(std::string path)
 					goto use_default_server;
 				}
 				if (temp_word[temp_word.size() - 1] == ';')
-					temp_word.erase(temp_word.size() - 1);
+					temp_word.erase(temp_word.size() - 1);	
 				_curr_location.addIndexFile(temp_word);
 				temp_word.clear();
 				while (iss>>temp_word)
@@ -460,14 +466,52 @@ ConfigLoader::~ConfigLoader(void) {}
 
 int	ConfigLoader::setDefaultServer(void)
 {
-	std::cout<<"Setting up default server"<<std::endl;
-	return (0);
+	try
+	{
+		ServerConfig	server;
+		LocationConfig	root_location;
+
+		server.setServerName("default");
+		server.addEndpoint("0.0.0.0:30000");
+		server.setBodySize(1, 'M');
+		server.addErrorPage(404, "./assets/error_pages/404.html");
+		server.addErrorPage(413, "./assets/error_pages/413.html");
+
+		root_location.setPathPrefix("/");
+		root_location.setMethod(GET_MASK);
+		root_location.setRoot("./data/www/example/html");
+		root_location.addIndexFile("index.html");
+		root_location.setAutoindex(false);
+		server.addLocation(root_location);
+
+		_servers.clear();
+		_default_server = server;
+		_servers[0] = server;
+		_server_count = 1;
+		_server_index = 0;
+		_use_default_server = true;
+		_fatal_error = false;
+		std::cout<<"Setting up default server"<<std::endl;
+		return (0);
+	}
+	catch (const std::exception &e)
+	{
+		_fatal_error = true;
+		std::cerr<<"Unable to set up default server: "<<e.what()<<std::endl;
+		return (1);
+	}
+	catch (...)
+	{
+		_fatal_error = true;
+		std::cerr<<"Non-standard exception caught"<<std::endl;
+		return (2);
+	}
 }
 
 const ServerConfig	&ConfigLoader::operator[](std::string name) const
 {
 	std::map<int,ServerConfig>::const_iterator	it = _servers.begin();
-
+	
 	while (it != _servers.end())
 	{
 		if (it->second.getServerName() == name)
@@ -488,7 +532,7 @@ void	ConfigLoader::debug(void) const
 		std::cout<<"using default server: YES\n";
 	else
 		std::cout<<"using default server: NO\n";
-	std::cout<<"server count: "<<_server_count<<std::endl;
+	std::cout<<"server count: "<<_server_count<<std::endl;	
 }
 #endif
 
