@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:57:27 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 00:31:16 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 13:03:11 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,9 +32,9 @@ namespace
 		{
 			int	flags = ::fcntl(fd, F_GETFL, 0);
 			if (flags < 0)
-				throw SysError("\n---fcntl failed (EventLoop.cpp:33)", errno);
+				throw SysError("\n---fcntl(F_GETFL) failed (EventLoop.cpp:33)", errno);
 			if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
-				throw SysError("\n---fcntl failed (EventLoop.cpp:36)", errno);
+				throw SysError("\n---fcntl(F_SETFL) failed (EventLoop.cpp:36)", errno);
 		}
 		catch (const std::exception &e)
 		{
@@ -43,7 +43,7 @@ namespace
 		}
 		catch (...)
 		{
-			std::cerr<<"Non-standard exception caught"<<std::endl;
+			std::cerr<<"\n---Non-standard exception caught"<<std::endl;
 			ret = false;
 		}
 		return (ret);

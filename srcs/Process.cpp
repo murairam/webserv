@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 14:42:47 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 16:40:53 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 13:10:40 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,7 +35,7 @@ pid_t	Process::ft_fork(void)
 
 	temp = ::fork();
 	if (temp < 0)
-		throw SysError("fork failed", errno);
+		throw SysError("\n---fork failed", errno);
 	_pid = temp;
 	return (temp);
 }
@@ -44,7 +44,7 @@ pid_t	Process::ft_fork(void)
 void	Process::ft_execve(const std::string &path, char *const argv[], char *const envp[])
 {
 	if (::execve(path.c_str(), argv, envp))
-		throw SysError("execve failed: " + path, errno);
+		std::cerr<<"\n---execve failed: "<<std::strerror(errno)<<std::endl;
 }
 
 /* custom wait, waitpid */
@@ -54,10 +54,10 @@ int	Process::ft_wait(void)
 	pid_t	pid;
 
 	if (_pid <= 0)
-		throw SysError("wait on invalid pid", ECHILD);
+		throw SysError("\n---wait on invalid pid", ECHILD);
 	pid = ::wait(&status);
 	if (pid < 0)
-		throw SysError("wait failed", errno);
+		throw SysError("\n---wait failed", errno);
 	return (status);
 }
 
@@ -68,7 +68,7 @@ int	Process::ft_waitpid(pid_t pid, int option)
 
 	r = ::waitpid(pid, &status, option);
 	if (r < 0)
-		throw SysError("waitpid failed", errno);
+		throw SysError("\n---waitpid failed", errno);
 	return (status);
 }
 
@@ -76,9 +76,9 @@ int	Process::ft_waitpid(pid_t pid, int option)
 void	Process::killsig(int sig) const
 {
 	if (_pid <= 0)
-		throw SysError("kill on invalid pid", ESRCH);
+		throw SysError("\n---kill on invalid pid", ESRCH);
 	if (::kill(_pid, sig))
-		throw SysError("kill failed", errno);
+		throw SysError("\n---kill failed", errno);
 }
 
 void	Process::signalset(int sig, void (*handler)(int))
@@ -87,5 +87,5 @@ void	Process::signalset(int sig, void (*handler)(int))
 	
 	r = ::signal(sig, handler);
 	if (r == SIG_ERR)
-		throw SysError("signal failed", errno);
+		throw SysError("\n---signal failed", errno);
 }

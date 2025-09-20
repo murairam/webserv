@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 23:18:52 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 13:11:13 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,12 +45,12 @@ int	main(int argc, char **argv, char **envp)
 #endif
 		if (cfg.selfcheck())
 		{
-			std::cerr<<"ConfigLoader reported fatal error, abort"<<std::endl;
+			std::cerr<<"\n---ConfigLoader reported fatal error, abort"<<std::endl;
 			return (2);
 		}
 		const std::map<int,ServerConfig>	&servers = cfg.getServers();
 		if (servers.empty())
-			throw std::runtime_error("No server configuration available");
+			throw std::runtime_error("\n---No server configuration available");
 
 		std::map<int,ServerConfig>::const_iterator	it = servers.begin();
 		while (it != servers.end())
@@ -72,7 +72,7 @@ int	main(int argc, char **argv, char **envp)
 			it++;
 		}
 		if (!registry.engage_all(loop, 128, manager))
-			throw std::runtime_error("Unable to open any listening socket");
+			throw std::runtime_error("\n---Unable to open any listening socket");
 
 		loop.set_timeout(400);
 		loop.run();
@@ -84,7 +84,7 @@ int	main(int argc, char **argv, char **envp)
 	}
 	catch (...)
 	{
-		std::cerr<<"Non-standard exception caught"<<std::endl;
+		std::cerr<<"\n---Non-standard exception caught"<<std::endl;
 		ret = 4;
 	}
 	manager.drop_all();

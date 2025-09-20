@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:11:14 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 00:34:02 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 13:11:48 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,7 @@ namespace
 		}
 		catch (...)
 		{
-			std::cerr<<"Non-standard exception caught"<<std::endl;
+			std::cerr<<"\n---Non-standard exception caught"<<std::endl;
 			ret = false;
 		}
 		return (ret);
@@ -157,7 +157,7 @@ bool	Listener::listen(int backlog)
 	catch (...)
 	{
 		(void)::close(s);
-		std::cerr<<"Non-standard exception caught"<<std::endl;
+		std::cerr<<"\n---Non-standard exception caught"<<std::endl;
 		ret = false;
 	}
 	return (ret);

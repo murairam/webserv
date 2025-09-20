@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 15:34:00 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 19:56:22 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 13:07:54 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,12 +15,25 @@
 off_t	getFileSize(const std::string &path)
 {
 	struct stat	st;
-	int			r;
+	off_t		ret;
 
-	r = ::stat(path.c_str(), &st);
-	if (r)
-		throw SysError("stat failed: " + path, errno);
-	return (st.st_size);
+	try
+	{
+		if (::stat(path.c_str(), &st) < 0)
+			throw SysError("\n---stat failed: " + path, errno);
+		ret = st.st_size;
+	}
+	catch (const std::exception &e)
+	{
+		std::cerr<<e.what()<<std::endl;
+		ret = -1;
+	}
+	catch (...)
+	{
+		std::cerr<<"\n---Non-standard exception caught"<<std::endl;
+		ret = -1;
+	}
+	return (ret);
 }
 
 bool	isDirectory(const std::string &path)

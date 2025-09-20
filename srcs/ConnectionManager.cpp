@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 14:17:24 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 15:22:25 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 13:05:25 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,6 +33,7 @@ Connection	*ConnectionManager::establish(int client_fd, const std::string &serve
 	}
 	catch (const std::exception &e)
 	{
+		std::cerr<<e.what()<<std::endl;
 		(void)::close(client_fd);
 		return (0);
 	}

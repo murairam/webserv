@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 14:16:51 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 14:49:03 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 13:06:48 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,13 +17,27 @@ namespace
 {
 	bool	set_nonblock_fd(int fd)
 	{
-		int	flags = ::fcntl(fd, F_GETFL, 0);
+		bool	ret = true;
 
-		if (flags < 0)
-			return (false);
-		if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
-			return (false);
-		return (true);
+		try
+		{
+			int	flags = ::fcntl(fd, F_GETFL, 0);
+			if (flags < 0)
+				throw SysError("\n---fcntl(F_GETFL) failed (Connection.cpp:24)", errno);
+			if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+				throw SysError("\n---fcntl(F_SETFL) failed (Connection.cpp:27)", errno);
+		}
+		catch (const std::exception &e)
+		{
+			std::cerr<<e.what()<<std::endl;
+			ret = false;
+		}
+		catch (...)
+		{
+			std::cerr<<"\n---Non-standard exception caught"<<std::endl;
+			ret = false;
+		}
+		return (ret);
 	}
 }
 

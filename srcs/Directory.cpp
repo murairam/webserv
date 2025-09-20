@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:02 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 00:27:04 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 13:04:49 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,7 @@ void	Directory::ft_opendir(void)
 	{
 		_err_code = errno;
 		_err_code_set = true;
-		throw SysError("opendir failed on: " + _path + ", ", _err_code);
+		throw SysError("\n---opendir failed on: " + _path + ", ", _err_code);
 	}
 }
 
@@ -75,7 +75,7 @@ void	Directory::ft_closedir(void)
 	{
 		_err_code = errno;
 		_err_code_set = true;
-		throw SysError("closedir failed on: " + _path + ", ", _err_code);
+		throw SysError("\n---closedir failed on: " + _path + ", ", _err_code);
 	}
 	_dir = 0;
 }
@@ -86,7 +86,7 @@ std::string	Directory::nextEntry(void)
 
 	if (!_dir)
 	{
-		std::cerr<<"readdir on closed DIR*"<<std::endl;
+		std::cerr<<"\n---readdir on closed DIR*"<<std::strerror(errno)<<std::endl;
 		return (std::string());
 	}
 	errno = 0;
@@ -101,7 +101,7 @@ std::string	Directory::nextEntry(void)
 			if (_err_code)
 			{
 				_err_code_set = true;
-				std::cerr<<"readdir failed: "<<std::strerror(_err_code)<<std::endl;
+				std::cerr<<"\n---readdir failed: "<<std::strerror(_err_code)<<std::endl;
 				return (std::string());
 			}
 		}
