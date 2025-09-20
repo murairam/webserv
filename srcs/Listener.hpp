@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:10:58 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 23:27:21 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 00:50:44 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 # include "_headers.hpp"
 # include "IFdHandler.hpp"
 # include "SysError.hpp"
+# include "utility.hpp"
 
 class	EventLoop;
 class	ConnectionManager;

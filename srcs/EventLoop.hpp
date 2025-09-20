@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/18 21:05:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 00:28:04 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 00:52:36 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 # include "_headers.hpp"
 # include "SysError.hpp"
+# include "utility.hpp"
 
 class	IFdHandler;
 

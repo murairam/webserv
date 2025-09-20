@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:57:27 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 13:03:11 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 00:54:47 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,39 +20,18 @@ namespace
 	void	eventloop_signal_handler(int sig)
 	{
 		if (g_wakeup > -1)
-			(void)::write(g_wakeup, "1", 1);
+		{
+			ssize_t	ignored = ::write(g_wakeup, "1", 1);
+			(void)ignored;
+		}
 		(void)sig;
-	}
-	
-	bool	set_nonblock_fd(int fd)
-	{
-		bool	ret = true;
-
-		try
-		{
-			int	flags = ::fcntl(fd, F_GETFL, 0);
-			if (flags < 0)
-				throw SysError("\n---fcntl(F_GETFL) failed (EventLoop.cpp:33)", errno);
-			if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
-				throw SysError("\n---fcntl(F_SETFL) failed (EventLoop.cpp:36)", errno);
-		}
-		catch (const std::exception &e)
-		{
-			std::cerr<<e.what()<<std::endl;
-			ret = false;
-		}
-		catch (...)
-		{
-			std::cerr<<"\n---Non-standard exception caught"<<std::endl;
-			ret = false;
-		}
-		return (ret);
 	}
 
 	void	drain_pipe_once(int fd)
 	{
 		char	buf[5000];
-		(void)::read(fd, buf, sizeof(buf));
+		ssize_t	ignored = ::read(fd, buf, sizeof(buf));
+		(void)ignored;
 	}
 
 	std::time_t	getTime(void)
@@ -72,8 +51,8 @@ _wakeup_wr_fd(-1), _should_stop(false), _timeout(0)
 	{
 		_wakeup_rd_fd = pipefd[0];
 		_wakeup_wr_fd = pipefd[1];
-		if (!set_nonblock_fd(_wakeup_rd_fd)
-			|| !set_nonblock_fd(_wakeup_wr_fd))
+		if (!set_nonblock_fd(_wakeup_rd_fd, std::string("EventLoop:54"))
+			|| !set_nonblock_fd(_wakeup_wr_fd, std::string("EventLoop:55")))
 		{
 			(void)::close(_wakeup_rd_fd);
 			(void)::close(_wakeup_wr_fd);
@@ -359,7 +338,10 @@ void	EventLoop::touch(int fd)
 void	EventLoop::notify(void)
 {
 	if (_wakeup_wr_fd > -1)
-		(void)::write(_wakeup_wr_fd, "6", 1);
+	{
+		ssize_t	ignored = ::write(_wakeup_wr_fd, "6", 1);
+		(void)ignored;
+	}
 }
 
 void	EventLoop::set_signal_wakup(int sig)

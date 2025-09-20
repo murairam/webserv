@@ -6,40 +6,12 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 14:16:51 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 13:06:48 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 00:49:58 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Connection.hpp"
 #include "EventLoop.hpp"
-
-namespace
-{
-	bool	set_nonblock_fd(int fd)
-	{
-		bool	ret = true;
-
-		try
-		{
-			int	flags = ::fcntl(fd, F_GETFL, 0);
-			if (flags < 0)
-				throw SysError("\n---fcntl(F_GETFL) failed (Connection.cpp:24)", errno);
-			if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
-				throw SysError("\n---fcntl(F_SETFL) failed (Connection.cpp:27)", errno);
-		}
-		catch (const std::exception &e)
-		{
-			std::cerr<<e.what()<<std::endl;
-			ret = false;
-		}
-		catch (...)
-		{
-			std::cerr<<"\n---Non-standard exception caught"<<std::endl;
-			ret = false;
-		}
-		return (ret);
-	}
-}
 
 Connection::Connection(void)
 :_fd(-1), _loop(0), _server_name(), _inbuf(), _outbuf(),
@@ -65,7 +37,7 @@ Connection::Connection
 :_fd(fd), _loop(0), _server_name(server_name), _inbuf(),
 _outbuf(), _engaged(false), _should_close(false)
 {
-	(void)set_nonblock_fd(_fd);
+	(void)set_nonblock_fd_nothrow(_fd);
 }
 
 void	Connection::engageLoop(EventLoop &loop)

@@ -27,6 +27,8 @@ _curr_server(), _curr_location(), _curr_endpoint(), _currline(0),
 _fatal_error(false), _root_is_folder(false)
 {
 	parse(path);
+	if (!_fatal_error)
+		std::cout<<"webserv launched"<<std::endl;
 }
 
 void	ConfigLoader::parse(std::string path)
@@ -47,9 +49,7 @@ void	ConfigLoader::parse(std::string path)
 	std::string			keyword;
 	std::string			temp_word;
 
-#ifdef	_DEBUG
 	std::cout<<"The config file path is: "<<path.c_str()<<std::endl;
-#endif
 	/* If input file is fucked, use default server configuration */
 	if (!file)
 	{
