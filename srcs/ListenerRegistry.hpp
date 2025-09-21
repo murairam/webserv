@@ -15,6 +15,8 @@
 
 # include "_headers.hpp"
 # include "Listener.hpp"
+# include "ServerConfig.hpp"
+# include "Endpoint.hpp"
 
 class	EventLoop;
 class	ConnectionManager;
@@ -36,10 +38,12 @@ class	ListenerRegistry
 		{
 			Listener	_listener;
 			std::string	_default_name;
+			const ServerConfig	*_server_cfg;
 		};
 		
 		std::map<SocketKey,SocketEntry>	_sockets;
 		std::map<int,std::string>		_fd_to_server;
+		std::map<int,const ServerConfig*>	_fd_to_config;
 		std::vector<Listener>			_vec_listener;
 
 		ListenerRegistry(const ListenerRegistry &other);
@@ -51,7 +55,7 @@ class	ListenerRegistry
 		/*	Bind a server to a pair of host<--->port,
 			The first server comes becomes the default server for that pair;
 		*/
-		void	prepare(const std::string	&server_name, const std::string &host, int port);
+		void	prepare(const ServerConfig &server, const Endpoint &endpoint);
 		/*	Engage all Listeners to that EventLoop;
 			Return the number of successfully opened sockets;
 		*/
@@ -61,6 +65,7 @@ class	ListenerRegistry
 		/*		Determine which server should handle this FD;
 		*/
 		std::string	DetermineServer(int fd) const;
+		const ServerConfig	*ResolveConfig(int fd) const;
 		const std::vector<Listener>	&getListeners(void) const;
 };
 

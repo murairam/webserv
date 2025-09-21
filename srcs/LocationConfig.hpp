@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   LocationConfig.hpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 14:14:10 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 12:58:24 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/19 21:31:54 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,11 +31,11 @@ class	LocationConfig
 		int				_priority;
 		std::map<std::string, std::string>	_cgi_handlers;
 
-public:
-	LocationConfig(void);
-	LocationConfig(const LocationConfig &other);
-	LocationConfig &operator=(const LocationConfig &other);
-	~LocationConfig(void);
+	public:
+		LocationConfig(void);
+		LocationConfig(const LocationConfig &other);
+		LocationConfig	&operator=(const LocationConfig &other);
+		~LocationConfig(void);
 
 		const std::string	&getPathPrefix(void) const;
 		int					getAllowedMethods(void) const;
@@ -65,9 +65,6 @@ public:
 #ifdef	_DEBUG
 		void	debug(void) const;
 #endif
-
 };
-
-
 
 #endif

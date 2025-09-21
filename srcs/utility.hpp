@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 15:34:07 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 23:03:15 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 21:52:11 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,4 +37,8 @@ std::string	MethodMaskToToken(int method);
 bool	set_nonblock_fd_nothrow(int fd);
 bool	set_nonblock_fd(int fd, std::string position = std::string());
 
+/*	string processing helpers
+*/
+std::string	trim(const std::string &input);
+std::string	toLower(const std::string &input);
 #endif

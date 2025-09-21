@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:10:58 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 00:50:44 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 23:10:20 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 # include "SysError.hpp"
 # include "utility.hpp"
 
+class	ServerConfig;
 class	EventLoop;
 class	ConnectionManager;
 
@@ -34,6 +35,7 @@ class	Listener: public IFdHandler
 		bool		_engaged;
 		EventLoop	*_loop;
 		ConnectionManager	*_conn_mgr;
+		const ServerConfig	*_server_cfg;
 		
 	public:
 		Listener(const Listener &other);
@@ -57,6 +59,7 @@ class	Listener: public IFdHandler
 		/* Disengage, close FD, quit from the event loop */
 		void	disengageLoop(EventLoop &loop);
 		void	setConnectionManager(ConnectionManager *manager);
+		void	setServerConfig(const ServerConfig *cfg);
 
 		int			getFD(void) const;
 		const std::string	&getHost(void) const;

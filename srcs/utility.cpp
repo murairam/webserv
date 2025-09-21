@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 15:34:00 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 23:31:49 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 21:52:52 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -134,4 +134,25 @@ bool	set_nonblock_fd(int fd, std::string position)
 	ret = false;
 	}
 	return (ret);
+}
+
+std::string	trim(const std::string &input)
+{
+	std::string::size_type	first = input.find_first_not_of(" \t");
+	if (first == std::string::npos)
+		return ("");
+	std::string::size_type	last = input.find_last_not_of(" \t");
+	return (input.substr(first, last - first + 1));
+}
+
+std::string	toLower(const std::string &input)
+{
+	std::string	copy = input;
+	std::string::iterator	it = copy.begin();
+	while (it != copy.end())
+	{
+		*it = static_cast<char>(std::tolower(static_cast<unsigned char>(*it)));
+		it++;
+	}
+	return (copy);
 }

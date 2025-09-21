@@ -24,31 +24,33 @@ bool	ListenerRegistry::SocketKey::operator<(const SocketKey &s) const
 	return (_port < s._port);
 }
 ListenerRegistry::ListenerRegistry(void)
-:_sockets(), _fd_to_server(), _vec_listener() {}
+:_sockets(), _fd_to_server(), _fd_to_config(), _vec_listener() {}
 
 ListenerRegistry::~ListenerRegistry(void){}
 
 void	ListenerRegistry::prepare
-(const std::string	&server_name, const std::string &host, int port)
+(const ServerConfig &server, const Endpoint &endpoint)
 {
-	SocketKey	key = {host, port};
+	SocketKey	key = {endpoint.getHost(), endpoint.getPort()};
 	SocketEntry	entry;
 	
 	std::map<SocketKey,SocketEntry>::iterator	it = _sockets.find(key);
 	if (it == _sockets.end())
 	{
-		entry._listener = Listener(host, port, server_name);
-		entry._default_name = server_name;
+		entry._listener = Listener(endpoint.getHost(), endpoint.getPort(), server.getServerName());
+		entry._default_name = server.getServerName();
+		entry._server_cfg = &server;
 		_sockets[key] = entry;
 	}
 	else
-		(void)server_name;
+		(void)server;
 }
 
 int		ListenerRegistry::engage_all(EventLoop &loop, int backlog, ConnectionManager &manager)
 {
 	int	count = 0;
 	_fd_to_server.clear();
+	_fd_to_config.clear();
 	_vec_listener.clear();
 
 	std::map<SocketKey,SocketEntry>::iterator	it = _sockets.begin();
@@ -56,12 +58,14 @@ int		ListenerRegistry::engage_all(EventLoop &loop, int backlog, ConnectionManage
 	{
 		SocketEntry	&se = it->second;
 		se._listener.setConnectionManager(&manager);
+		se._listener.setServerConfig(se._server_cfg);
 		if (se._listener.listen(backlog))
 		{
 			se._listener.engageLoop(loop);
 			/* Record this pair FD<--->server name */
 			int	listen_fd = se._listener.getFD();
 			_fd_to_server[listen_fd] = se._default_name;
+			_fd_to_config[listen_fd] = se._server_cfg;
 			_vec_listener.push_back(se._listener);
 			count++;
 		}
@@ -79,6 +83,7 @@ void	ListenerRegistry::disengage_all(EventLoop &loop)
 		it++;
 	}
 	_fd_to_server.clear();
+	_fd_to_config.clear();
 	_vec_listener.clear();
 }
 std::string	ListenerRegistry::DetermineServer(int fd) const
@@ -87,6 +92,14 @@ std::string	ListenerRegistry::DetermineServer(int fd) const
 	if (it != _fd_to_server.end())
 		return (it->second);
 	return (std::string());
+}
+
+const ServerConfig	*ListenerRegistry::ResolveConfig(int fd) const
+{
+	std::map<int,const ServerConfig*>::const_iterator	it = _fd_to_config.find(fd);
+	if (it != _fd_to_config.end())
+		return (it->second);
+	return (0);
 }
 const std::vector<Listener>	&ListenerRegistry::getListeners(void) const
 {

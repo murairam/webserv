@@ -6,13 +6,14 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:11:14 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 00:50:36 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 23:10:13 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Listener.hpp"
 #include "EventLoop.hpp"
 #include "ConnectionManager.hpp"
+#include "ServerConfig.hpp"
 
 namespace
 {
@@ -75,7 +76,7 @@ namespace
 
 Listener::Listener(void)
 :IFdHandler(), _host(), _port(0), _server_name(), _fd(-1), _engaged(false),
-_loop(0), _conn_mgr(0)
+_loop(0), _conn_mgr(0), _server_cfg(0)
 {}
 
 Listener::~Listener(void)
@@ -89,7 +90,7 @@ Listener::~Listener(void)
 Listener::Listener
 (const std::string &host, int port, const std::string &server_name)
 :IFdHandler(), _host(host), _port(port), _server_name(server_name),
-_fd(-1), _engaged(false), _loop(0), _conn_mgr(0)
+_fd(-1), _engaged(false), _loop(0), _conn_mgr(0), _server_cfg(0)
 {}
 
 bool	Listener::listen(int backlog)
@@ -107,7 +108,7 @@ bool	Listener::listen(int backlog)
 			throw SysError ("\n---socket failed (Listener.cpp:129)", errno);
 		if (::setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
 			throw SysError ("\n---setsockopt failed (Listener.cpp:132)", errno);
-		if (!set_nonblock_fd(s))
+		if (!set_nonblock_fd(s, std::string("Listener.cpp:110")))
 		{
 			(void)::close(s);
 			ret = false;
@@ -170,7 +171,7 @@ void	Listener::onReadable(int fd)
 			(void)::close(client_fd);
 			continue;
 		}
-		Connection	*conn = _conn_mgr->establish(client_fd, _server_name, *_loop);
+		Connection	*conn = _conn_mgr->establish(client_fd, _server_name, _server_cfg, *_loop);
 		if (!conn)
 			(void)::close(client_fd);
 	}
@@ -249,9 +250,14 @@ void	Listener::setConnectionManager(ConnectionManager *manager)
 	_conn_mgr = manager;
 }
 
+void	Listener::setServerConfig(const ServerConfig *cfg)
+{
+	_server_cfg = cfg;
+}
+
 Listener::Listener(const Listener &other)
 :IFdHandler(other), _host(other._host), _port(other._port), _server_name(other._server_name),
-_fd(-1), _engaged(false), _loop(0), _conn_mgr(0) {}
+_fd(-1), _engaged(false), _loop(0), _conn_mgr(0), _server_cfg(0) {}
 
 Listener	&Listener::operator=(const Listener &other)
 {
@@ -266,6 +272,7 @@ Listener	&Listener::operator=(const Listener &other)
 		_engaged = false;
 		_loop = 0;
 		_conn_mgr = 0;
+		_server_cfg = 0;
 	}
 	return (*this);
 }

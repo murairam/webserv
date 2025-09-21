@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 00:47:22 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 20:03:38 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@
 # include "ServerConfig.hpp"
 # include "Endpoint.hpp"
 
-/*	---Testing signal handler START---
+/*	---Tignal handler START---
 */
 # include "SignalHandler.hpp"
 # include "SignalFDHandler.hpp"
@@ -35,7 +35,7 @@ namespace
 		sig_loop->stop();
 	}
 }
-/*	---Testing signal handler END---
+/*	---Signal handler END---
 */
 
 int	main(int argc, char **argv, char **envp)
@@ -45,13 +45,13 @@ int	main(int argc, char **argv, char **envp)
 	ConnectionManager	manager;
 	ConfigLoader		cfg;
 	int					ret = 0;
-/*	---Testing signal handler START---
+/*	---Signal handler START---
 */	SignalHandler	signal_handler;
 	SignalFDHandler	signal_fd_handler;
 	int				signal_fd = -1;
 	bool			signal_installed = false;
-/*	---Testing signal handler END---
-*/	
+/*	---Signal handler END---
+*/
 	if (!envp || !*envp || !**envp)
 	{
 		std::cerr<<ERROR_MSG_INVALID_ENVP<<std::endl;
@@ -59,7 +59,6 @@ int	main(int argc, char **argv, char **envp)
 	}
 	try
 	{
-		
 		std::cout<<"Launching webserv"<<std::endl;
 		if (argc > 1)
 			cfg = ConfigLoader(argv[1]);
@@ -73,7 +72,7 @@ int	main(int argc, char **argv, char **envp)
 			std::cerr<<"\n---ConfigLoader reported fatal error, abort"<<std::endl;
 			return (2);
 		}
-/*	---Testing signal handler START---
+/*	---Signal handler START---
 */
 		signal_handler.addSignal(SIGINT);
 		signal_handler.addSignal(SIGTERM);
@@ -85,7 +84,7 @@ int	main(int argc, char **argv, char **envp)
 			throw std::runtime_error("\n---Signal handler installation failed, you will need to manually abort the webserv");
 		signal_fd_handler = SignalFDHandler (&signal_handler, &shutdown_callback, &loop);
 		loop.add(signal_fd, EVENT_READ, &signal_fd_handler);
-/*	---Testing signal handler END---
+/*	---Signal handler END---
 */
 		const std::map<int,ServerConfig>	&servers = cfg.getServers();
 		if (servers.empty())
@@ -105,7 +104,7 @@ int	main(int argc, char **argv, char **envp)
 			std::vector<Endpoint>::const_iterator	it2 = endpoints.begin();
 			while (it2 != endpoints.end())
 			{
-				registry.prepare(server.getServerName(), it2->getHost(), it2->getPort());
+				registry.prepare(server, *it2);
 				it2++;
 			}
 			it++;
@@ -128,13 +127,13 @@ int	main(int argc, char **argv, char **envp)
 	}
 	manager.drop_all();
 	registry.disengage_all(loop);
-/*	---Testing signal handler START---
+/*	---Signal handler START---
 */
 	if (signal_fd > -1)
 		loop.remove(signal_fd);
 	if (signal_installed)
 		signal_handler.uninstall();
-/*	---Testing signal handler END---
+/*	---Signal handler END---
 */
 	return (ret);
 }

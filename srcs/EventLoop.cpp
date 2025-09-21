@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:57:27 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 00:54:47 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 23:13:48 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -75,8 +75,8 @@ _wakeup_wr_fd(-1), _should_stop(false), _timeout(other._timeout)
 	{
 		_wakeup_rd_fd = pipefd[0];
 		_wakeup_wr_fd = pipefd[1];
-		if (!set_nonblock_fd(_wakeup_rd_fd)
-			|| !set_nonblock_fd(_wakeup_wr_fd))
+		if (!set_nonblock_fd(_wakeup_rd_fd, std::string("EventLoop:78"))
+			|| !set_nonblock_fd(_wakeup_wr_fd, std::string("EventLoop:79")))
 		{
 			if (_wakeup_rd_fd > -1)
 				(void)::close(_wakeup_rd_fd);
