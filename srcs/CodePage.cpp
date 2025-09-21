@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/18 17:49:25 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/18 20:26:06 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 14:47:23 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,6 @@ std::string	CodePage::buildPage(int code) const
 
 	html.reserve(_template_prefix.size() + _template_middle.size()
 	+ _template_suffix.size() + title.size() * 2);
-	html.clear();
 	html = _template_prefix + title + _template_middle + title + _template_suffix;
 	return (html);
 }
@@ -36,7 +35,7 @@ std::string	CodePage::to_upper(const std::string &s)
 	{
 		c = s[i];
 		if (c >= 'a' && c <= 'z')
-			ret.push_back(char(c - 32));
+			ret.push_back(static_cast<char>((c - 32)));
 		else
 			ret.push_back(c);
 		i++;
@@ -91,6 +90,17 @@ _template_suffix("</h1>\n"
 )
 {}
 
+CodePage::CodePage(const CodePage &other)
+:_template_prefix(other._template_prefix),
+_template_middle(other._template_middle),
+_template_suffix(other._template_suffix) {(void)other;}
+
+CodePage	&CodePage::operator=(const CodePage &other)
+{
+	(void)other;
+	return (*this);
+}
+
 CodePage::~CodePage(void) {}
 
 const std::map<int,std::string>	&CodePage::codes(void)
@@ -125,6 +135,12 @@ const std::map<int,std::string>	&CodePage::codes(void)
 	return (m);
 }
 
+CodePage	&CodePage::getInstance(void)
+{
+	static CodePage	instance;
+	return (instance);
+}
+
 std::string	CodePage::getCodePage(int code) const
 {
 	return (buildPage(code));
@@ -142,4 +158,15 @@ std::string	CodePage::getReason(int code) const
 	if (it != codes().end())
 		return (it->second);
 	return ("Unsupported code");
+}
+
+namespace
+{
+	struct CodePageInit
+	{
+		CodePageInit(void){ (void)CodePage::getInstance();}
+		~CodePageInit(void) {}
+	};
+
+	CodePageInit	g_codepage_init;
 }

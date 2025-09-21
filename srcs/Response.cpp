@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 01:24:56 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 21:25:15 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 14:49:42 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,8 +15,13 @@
 #include "utility.hpp"
 #include "Directory.hpp"
 
+CodePage	&Response::_code_page(void)
+{
+	return (CodePage::getInstance());
+}
+
 Response::Response(void)
-:_status_code(200), _headers(), _body(), _code_page()
+:_status_code(200), _headers(), _body()
 {
 	setHeader("Server", "webserv/1.0");
 	setHeader("Date", getTimeString());
@@ -24,7 +29,7 @@ Response::Response(void)
 }
 
 Response::Response(int status_code)
-:_status_code(status_code), _headers(), _body(), _code_page()
+:_status_code(status_code), _headers(), _body()
 {
 	setHeader("Server", "webserv/1.0");
 	setHeader("Date", getTimeString());
@@ -33,7 +38,7 @@ Response::Response(int status_code)
 
 Response::Response(const Response &other)
 :_status_code(other._status_code), _headers(other._headers),
-_body(other._body), _code_page() {} 
+_body(other._body){} 
 
 Response	&Response::operator=(const Response &other)
 {
@@ -98,7 +103,7 @@ void	Response::setBodyFromFile(const std::string &filepath)
 std::string	Response::serialize(void) const
 {
 	std::string	response;
-	std::string	reason = _code_page.getReason(_status_code);
+	std::string	reason = _code_page().getReason(_status_code);
 
 	response = "HTTP/1.1 " + intToString(_status_code) + " " + reason + "\r\n";
 	std::map<std::string, std::string>::const_iterator	it = _headers.begin();
@@ -128,7 +133,7 @@ Response	Response::createErrorResponse(int code, const std::string &error_page_p
 			/* Fall back to generated error page */
 		}
 	}
-	resp.setBody(resp._code_page.getCodePage(code));
+	resp.setBody(resp._code_page().getCodePage(code));
 	resp.setHeader("Content-Type", "text/html");
 	return (resp);
 }
