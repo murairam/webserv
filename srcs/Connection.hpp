@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:08:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 22:08:52 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 22:39:03 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,9 +16,6 @@
 # include "IFdHandler.hpp"
 # include "_headers.hpp"
 # include "ServerConfig.hpp"
-# include "GetRequest.hpp"
-# include "PostRequest.hpp"
-# include "DeleteRequest.hpp"
 
 class	EventLoop;
 

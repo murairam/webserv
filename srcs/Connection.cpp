@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:07:49 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 22:15:20 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 22:34:10 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,7 +66,8 @@ void	Connection::parseGET(std::istream &s)
 			return ;
 		iss>>keyword;
 #ifdef	_DEBUG
-		std::cout<<"'"<<keyword<<"'"<<std::endl;
+		std::cout<<line<<std::endl;
+		std::cout<<"keyword being evaluated is:'"<<keyword<<"'"<<std::endl;
 #endif
 		if (toggle)
 		{
@@ -280,7 +281,8 @@ void	Connection::parsePOST(std::istream &s)
 		}
 		iss>>keyword;
 #ifdef	_DEBUG
-		std::cout<<"'"<<keyword<<"'"<<std::endl;
+		std::cout<<line<<std::endl;
+		std::cout<<"keyword being evaluated is:'"<<keyword<<"'"<<std::endl;
 #endif
 		if (toggle)
 		{
@@ -610,7 +612,8 @@ void	Connection::parseDELETE(std::istream &s)
 			return ;
 		iss>>keyword;
 #ifdef	_DEBUG
-		std::cout<<"'"<<keyword<<"'"<<std::endl;
+		std::cout<<line<<std::endl;
+		std::cout<<"keyword being evaluated is:'"<<keyword<<"'"<<std::endl;
 #endif
 		if (toggle)
 		{
@@ -839,6 +842,7 @@ void	Connection::queueWrite(const std::string &data)
 		_loop->set_events(_fd, events);
 	}
 }
+
 void	Connection::takeInput(std::string &dest)
 {
 	dest.swap(_inbuf);
@@ -868,6 +872,7 @@ bool	Connection::isClose(void) const
 {
 	return (_fd < 0);
 }
+
 void	Connection::onReadable(int fd)
 {
 	char	buf[8192];
