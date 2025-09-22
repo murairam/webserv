@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 01:24:56 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 15:16:41 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/22 16:16:29 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,8 +15,13 @@
 #include "utility.hpp"
 #include "Directory.hpp"
 
+CodePage	&Response::_code_page(void)
+{
+	return (CodePage::getInstance());
+}
+
 Response::Response(void)
-:_status_code(200), _headers(), _body(), _code_page()
+:_status_code(200), _headers(), _body()
 {
 	setHeader("Server", "webserv/1.0");
 	setHeader("Date", getTimeString());
@@ -24,7 +29,7 @@ Response::Response(void)
 }
 
 Response::Response(int status_code)
-:_status_code(status_code), _headers(), _body(), _code_page()
+:_status_code(status_code), _headers(), _body()
 {
 	setHeader("Server", "webserv/1.0");
 	setHeader("Date", getTimeString());
@@ -33,7 +38,7 @@ Response::Response(int status_code)
 
 Response::Response(const Response &other)
 :_status_code(other._status_code), _headers(other._headers),
-_body(other._body), _code_page() {} 
+_body(other._body){}
 
 Response	&Response::operator=(const Response &other)
 {
@@ -98,7 +103,7 @@ void	Response::setBodyFromFile(const std::string &filepath)
 std::string	Response::serialize(void) const
 {
 	std::string	response;
-	std::string	reason = _code_page.getReason(_status_code);
+	std::string	reason = _code_page().getReason(_status_code);
 
 	response = "HTTP/1.1 " + intToString(_status_code) + " " + reason + "\r\n";
 	std::map<std::string, std::string>::const_iterator	it = _headers.begin();
@@ -128,7 +133,7 @@ Response	Response::createErrorResponse(int code, const std::string &error_page_p
 			/* Fall back to generated error page */
 		}
 	}
-	resp.setBody(resp._code_page.getCodePage(code));
+	resp.setBody(resp._code_page().getCodePage(code));
 	resp.setHeader("Content-Type", "text/html");
 	return (resp);
 }
@@ -179,8 +184,24 @@ std::string	Response::generateDirectoryListingHTML(const std::string &path, cons
 	Directory		dir(path);
 	std::string		entry;
 
-	html = "<!DOCTYPE html>\n<html><head><title>Index of " + uri + "</title></head>\n";
-	html += "<body><h1>Index of " + uri + "</h1><hr><pre>\n";
+	html = "<!DOCTYPE html>\n<html><head><title>Index of " + escapeHTML(uri) + "</title></head>\n";
+	html += "<body><h1>Index of " + escapeHTML(uri) + "</h1><hr><pre>\n";
+
+	if (uri != "/" && !uri.empty())
+	{
+		std::string	parent = uri;
+		/* no trailing slash besides root */
+		if (parent.size() > 1 && parent[parent.size() - 1] == '/')
+			parent.erase(parent.size() - 1);
+		/* remove the last part */
+		std::string::size_type	pos = parent.find_last_of('/');
+		if (pos == std::string::npos || !pos)
+			parent = '/';
+		else
+			parent = parent.substr(0, pos) + "/";
+
+		html += "<a href=\"" + parent + "\">../</a>\n";
+	}
 
 	dir.ft_opendir();
 	while (!(entry = dir.nextEntry()).empty())
@@ -192,6 +213,7 @@ std::string	Response::generateDirectoryListingHTML(const std::string &path, cons
 			html += "<a href=\"" + entry + "\">" + entry + "</a>\n";
 	}
 	html += "</pre><hr></body></html>";
+	dir.ft_closedir();
 	return (html);
 }
 
@@ -256,3 +278,29 @@ void	Response::debug(void) const
 	std::cout << "===========================" << std::endl;
 }
 #endif
+
+std::string	Response::escapeHTML(const std::string &s) const
+{
+	std::string				ret;
+	std::string::size_type	i = 0;
+
+	ret.reserve(s.size());
+	while (i < s.size())
+	{
+		char	c = s[i];
+		if (c == '&')
+			ret += "&amp;";
+		else if (c == '<')
+			ret += "&lt;";
+		else if (c == '>')
+			ret += "&gt;";
+		else if (c == '"')
+			ret += "&quot;";
+		else if (c == '\'')
+			ret += "&#39;";
+		else
+			ret += c;
+		i++;
+	}
+	return (ret);
+}

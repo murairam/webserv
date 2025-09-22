@@ -3,7 +3,7 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigLoader.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 20:40:31 by yanli             #+#    #+#             */
 /*   Updated: 2025/09/15 21:31:23by yanli            ###   ########.fr       */
@@ -12,7 +12,13 @@
 
 #include "ConfigLoader.hpp"
 
-ConfigLoader::ConfigLoader(void) {}
+ConfigLoader::ConfigLoader(void)
+: _path(), _servers(), _use_default_server(true), _server_count(0),
+_server_index(-1), _default_server(), _curr_server(), _curr_location(),
+_curr_endpoint(), _currline(0), _fatal_error(false), _root_is_folder(false)
+{
+	setDefaultServer();
+}
 
 ConfigLoader::ConfigLoader(std::string path)
 :_path(path), _servers(), _use_default_server(true),
@@ -32,7 +38,7 @@ void	ConfigLoader::parse(std::string path)
 		SERVER,
 		LOCATION
 	};
-	int					err_code;
+	int					err_code = 0;
 	std::ifstream		file(path.c_str());
 	int					inside_bracket = 0;
 	context_enum		context = GLOBAL;
@@ -50,15 +56,15 @@ void	ConfigLoader::parse(std::string path)
 		err_code = errno;
 		if (setDefaultServer())
 			goto fatal_exit;
-		throw SysError("Unable to read config file, using default server config", errno);
+		throw SysError("Unable to open/read config file, using default server config", errno);
 		return ;
 	}
-	while(getline(file, line))
+	while(std::getline(file, line))
 	{
 		_currline++;
 #ifdef	_DEBUG
 		std::string	context_debug = ((context == GLOBAL) ? "GLOBAL" : (context == SERVER) ? "SERVER" : (context == LOCATION) ? "LOCATION" : "BULLSHIT");
-		std::cout<<"Current context is: "<<context_debug<<std::endl;
+		std::cout<<"Current context is: "<<context_debug<<std::endl; 
 #endif
 		if (line.empty() || line[0] == '#')
 			continue;
@@ -198,8 +204,6 @@ void	ConfigLoader::parse(std::string path)
 		}
 		else if (keyword == "server" && context == GLOBAL)
 		{
-#ifdef	_DEBUG
-#endif
 			context = SERVER;
 			if (iss>>temp_word)
 			{
@@ -274,14 +278,11 @@ void	ConfigLoader::parse(std::string path)
 						method_mask |= DELETE_MASK;
 					else if (temp_word == "POST" || temp_word == "POST;")
 						method_mask |= POST_MASK;
-					else if (temp_word == "PUT" || temp_word == "PUT;")
-						method_mask |= PUT_MASK;
-					else if (temp_word == "OPTIONS" || temp_word == "OPTIONS;")
-						method_mask |= OPTIONS_MASK;
-					else if (temp_word == "CONNECT" || temp_word == "CONNECT;")
-						method_mask |= CONNECT_MASK;
-					else if (temp_word == "HEAD" || temp_word == "HEAD;")
-						method_mask |= HEAD_MASK;
+					else
+					{
+						std::cerr<<"Only the following methods are supported: GET, POST, DELETE"<<std::endl;
+						goto use_default_server;
+					}
 					temp_word.clear();
 				}
 				_curr_location.setMethod(method_mask);
@@ -294,7 +295,7 @@ void	ConfigLoader::parse(std::string path)
 					goto use_default_server;
 				}
 				if (temp_word[temp_word.size() - 1] == ';')
-					temp_word.erase(temp_word.size() - 1);
+					temp_word.erase(temp_word.size() - 1);	
 				_curr_location.addIndexFile(temp_word);
 				temp_word.clear();
 				while (iss>>temp_word)
@@ -389,7 +390,7 @@ void	ConfigLoader::parse(std::string path)
 				if (temp_word.empty())
 					goto use_default_server;
 				char unit = temp_word[temp_word.size() - 1];
-				if (unit != 'K' && unit != 'M' && unit != 'G')
+				if (unit != 'B' && unit != 'K' && unit != 'M' && unit != 'G')
 				{
 					std::cerr<<path<<":"<<_currline<<": Invalid unit for 'client_max_body_size'"<<std::endl;
 					goto use_default_server;
@@ -398,7 +399,7 @@ void	ConfigLoader::parse(std::string path)
 				if (temp_word.empty())
 					goto use_default_server;
 				long value = std::strtol(temp_word.c_str(), 0, 10);
-				long multiplier = (unit == 'K') ? 1024L : (unit == 'M') ? (1024L * 1024L) : (1024L * 1024L * 1024L);
+				long multiplier = (unit == 'B') ? 1L : (unit == 'K') ? 1024L : (unit == 'M') ? (1024L * 1024L) : (1024L * 1024L * 1024L);
 				_curr_location.setClientBodyLimit(value * multiplier);
 #ifdef	_DEBUG
 				std::cout<<"parser: location body limit: "<<value<<unit<<std::endl;
@@ -460,14 +461,52 @@ ConfigLoader::~ConfigLoader(void) {}
 
 int	ConfigLoader::setDefaultServer(void)
 {
-	std::cout<<"Setting up default server"<<std::endl;
-	return (0);
+	int	ret = 0;
+	try
+	{
+		ServerConfig	server;
+		LocationConfig	root_location;
+
+		server.setServerName("default_webserv");
+		server.addEndpoint("0.0.0.0:30000");
+		server.setBodySize(1, 'M');
+
+		root_location.setPathPrefix("/");
+		root_location.setMethod(GET_MASK);
+		root_location.setRoot("./data/www/example/html");
+		root_location.addIndexFile("index.html");
+		root_location.setAutoindex(false);
+		server.addLocation(root_location);
+
+		_servers.clear();
+		_default_server = server;
+		_servers[0] = server;
+		_server_count = 1;
+		_server_index = 0;
+		_use_default_server = true;
+		_fatal_error = false;
+		std::cout<<"Setting up default server"<<std::endl;
+		return (ret);
+	}
+	catch (const std::exception &e)
+	{
+		_fatal_error = true;
+		std::cerr<<"Unable to set up default server: "<<e.what()<<std::endl;
+		ret = 1;
+	}
+	catch (...)
+	{
+		_fatal_error = true;
+		std::cerr<<"Non-standard exception caught"<<std::endl;
+		ret = 2;
+	}
+	return (ret);
 }
 
 const ServerConfig	&ConfigLoader::operator[](std::string name) const
 {
 	std::map<int,ServerConfig>::const_iterator	it = _servers.begin();
-
+	
 	while (it != _servers.end())
 	{
 		if (it->second.getServerName() == name)
@@ -488,7 +527,7 @@ void	ConfigLoader::debug(void) const
 		std::cout<<"using default server: YES\n";
 	else
 		std::cout<<"using default server: NO\n";
-	std::cout<<"server count: "<<_server_count<<std::endl;
+	std::cout<<"server count: "<<_server_count<<std::endl;	
 }
 #endif
 

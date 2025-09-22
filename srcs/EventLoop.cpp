@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   EventLoop.cpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:57:27 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 13:28:17 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/20 23:13:48 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,25 +20,18 @@ namespace
 	void	eventloop_signal_handler(int sig)
 	{
 		if (g_wakeup > -1)
-			(void)::write(g_wakeup, "1", 1);
+		{
+			ssize_t	ignored = ::write(g_wakeup, "1", 1);
+			(void)ignored;
+		}
 		(void)sig;
-	}
-
-	bool	set_nonblock_fd(int fd)
-	{
-		int	flags = ::fcntl(fd, F_GETFL, 0);
-
-		if (flags < 0)
-			return (false);
-		if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
-			return (false);
-		return (true);
 	}
 
 	void	drain_pipe_once(int fd)
 	{
 		char	buf[5000];
-		(void)::read(fd, buf, sizeof(buf));
+		ssize_t	ignored = ::read(fd, buf, sizeof(buf));
+		(void)ignored;
 	}
 
 	std::time_t	getTime(void)
@@ -58,11 +51,11 @@ _wakeup_wr_fd(-1), _should_stop(false), _timeout(0)
 	{
 		_wakeup_rd_fd = pipefd[0];
 		_wakeup_wr_fd = pipefd[1];
-		if (!set_nonblock_fd(_wakeup_rd_fd)
-			|| !set_nonblock_fd(_wakeup_wr_fd))
+		if (!set_nonblock_fd(_wakeup_rd_fd, std::string("EventLoop:54"))
+			|| !set_nonblock_fd(_wakeup_wr_fd, std::string("EventLoop:55")))
 		{
-			::close(_wakeup_rd_fd);
-			::close(_wakeup_wr_fd);
+			(void)::close(_wakeup_rd_fd);
+			(void)::close(_wakeup_wr_fd);
 			_wakeup_rd_fd = -1;
 			_wakeup_wr_fd = -1;
 		}
@@ -82,8 +75,8 @@ _wakeup_wr_fd(-1), _should_stop(false), _timeout(other._timeout)
 	{
 		_wakeup_rd_fd = pipefd[0];
 		_wakeup_wr_fd = pipefd[1];
-		if (!set_nonblock_fd(_wakeup_rd_fd)
-			|| !set_nonblock_fd(_wakeup_wr_fd))
+		if (!set_nonblock_fd(_wakeup_rd_fd, std::string("EventLoop:78"))
+			|| !set_nonblock_fd(_wakeup_wr_fd, std::string("EventLoop:79")))
 		{
 			if (_wakeup_rd_fd > -1)
 				(void)::close(_wakeup_rd_fd);
@@ -113,7 +106,7 @@ EventLoop	&EventLoop::operator=(const EventLoop &other)
 		_scratch_evs.clear();
 		_should_stop = false;
 		_timeout = other._timeout;
-
+		
 		int	pipefd[2] = {-1, -1};
 
 		if (!::pipe(pipefd))
@@ -143,21 +136,19 @@ EventLoop::~EventLoop(void)
 	while (it != _entries.end())
 	{
 		int	fd = it->first;
-		bool owned = it->second._owned_by_eventloop;
 		it++;
-		/* close only if owned by event loop or if it's the wakeup pipe */
-		if (owned)
+		if (fd != _wakeup_rd_fd)
 			(void)::close(fd);
 	}
 	_entries.clear();
-
+	
 	if (_wakeup_rd_fd > -1)
 		(void)::close(_wakeup_rd_fd);
 	if (_wakeup_wr_fd > -1)
 		(void)::close(_wakeup_wr_fd);
 }
 
-void	EventLoop::add(int fd, int events, IFdHandler *handler, bool take_ownership)
+void	EventLoop::add(int fd, int events, IFdHandler *handler)
 {
 	Entry	e;
 
@@ -165,7 +156,6 @@ void	EventLoop::add(int fd, int events, IFdHandler *handler, bool take_ownership
 	e._events = events;
 	e._handler = handler;
 	e._last_active = getTime();
-	e._owned_by_eventloop = take_ownership;
 	this->_entries[fd] = e;
 }
 
@@ -223,7 +213,7 @@ void	EventLoop::run_once(unsigned timeout)
 			p.events |= POLLIN;
 		if (e._events & EVENT_WRITE)
 			p.events |= POLLOUT;
-
+		
 		/* POLLERR and POLLHUP are delivered by poll() via revents */
 		pfds.push_back(p);
 		_scratch_fds.push_back(e._fd);
@@ -232,7 +222,7 @@ void	EventLoop::run_once(unsigned timeout)
 	}
 	(void)::poll(&pfds[0], pfds.size(), timeout);
 	std::time_t	curr_time = getTime();
-
+	
 	/* If timeout set, enforce idle timeout so no hang up*/
 	if (_timeout)
 	{
@@ -248,7 +238,7 @@ void	EventLoop::run_once(unsigned timeout)
 			}
 			it2++;
 		}
-
+		
 		std::vector<int>::const_iterator	it3 = to_close.begin();
 		while (it3 != to_close.end())
 		{
@@ -265,7 +255,7 @@ void	EventLoop::run_once(unsigned timeout)
 			}
 		}
 	}
-
+	
 	/* make a copy of FDs to avoid iterator invalidation if some FDs are
 		engaged/disengaged during callback; also copy their events;
 	*/
@@ -288,7 +278,7 @@ void	EventLoop::run_once(unsigned timeout)
 		int	fd = ready_fd[i];
 		int	re = ready_ev[i];
 		i++;
-
+		
 		/* wakeup pipe read end */
 		if (fd == _wakeup_rd_fd)
 		{
@@ -348,7 +338,10 @@ void	EventLoop::touch(int fd)
 void	EventLoop::notify(void)
 {
 	if (_wakeup_wr_fd > -1)
-		(void)::write(_wakeup_wr_fd, "6", 1);
+	{
+		ssize_t	ignored = ::write(_wakeup_wr_fd, "6", 1);
+		(void)ignored;
+	}
 }
 
 void	EventLoop::set_signal_wakup(int sig)

@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:10:58 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 00:53:29 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 23:10:20 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,9 +15,16 @@
 
 # include "_headers.hpp"
 # include "IFdHandler.hpp"
+# include "SysError.hpp"
+# include "utility.hpp"
 
+class	ServerConfig;
 class	EventLoop;
+class	ConnectionManager;
 
+/*	Listener wraps a non-blocking socket for one pair of host<--->port;
+	It accepts new connections once poll() signals readability
+*/
 class	Listener: public IFdHandler
 {
 	private:
@@ -26,13 +33,14 @@ class	Listener: public IFdHandler
 		std::string	_server_name;
 		int			_fd;
 		bool		_engaged;
-
-		Listener(const Listener &other);
-		Listener	&operator=(const Listener &other);
+		EventLoop	*_loop;
+		ConnectionManager	*_conn_mgr;
+		const ServerConfig	*_server_cfg;
 		
 	public:
+		Listener(const Listener &other);
+		Listener	&operator=(const Listener &other);
 		Listener(void);
-
 		virtual	~Listener(void);
 		Listener(const std::string &host, int port, const std::string &server_name);
 
@@ -43,18 +51,20 @@ class	Listener: public IFdHandler
 		virtual void	onTick(int fd);
 
 		/*	Bind and listen in non-blocking way
-			Put this fd into EventLoop
+			Put this FD into EventLoop
 		*/
-		bool	ft_open(int fd);
+		bool	listen(int fd);
 		/* Engage this listener into the event loop*/
 		void	engageLoop(EventLoop &loop);
 		/* Disengage, close FD, quit from the event loop */
 		void	disengageLoop(EventLoop &loop);
+		void	setConnectionManager(ConnectionManager *manager);
+		void	setServerConfig(const ServerConfig *cfg);
 
 		int			getFD(void) const;
-		std::string	getHost(void) const;
+		const std::string	&getHost(void) const;
 		int			getPort(void) const;
-		std::string	getServerName(void) const;
+		const std::string	&getServerName(void) const;
 };
 
 #endif

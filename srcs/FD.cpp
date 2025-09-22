@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   FD.cpp                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:51:23 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 14:05:00 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/20 13:02:27 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,7 @@ FD::FD(const FD &other):_fd(-1)
 	{
 		new_fd = ::dup(other._fd);
 		if (new_fd < 0)
-			throw SysError(std::string("dup failed"), errno);
+			throw SysError("\n---dup failed", errno);
 		_fd = new_fd;
 	}
 }
@@ -32,7 +32,7 @@ FD::FD(const FD &other):_fd(-1)
 FD	&FD::operator=(const FD &other)
 {
 	int	new_fd;
-
+	
 	if (this != &other)
 	{
 		if (_fd > -1)
@@ -42,7 +42,7 @@ FD	&FD::operator=(const FD &other)
 		{
 			new_fd = ::dup(other._fd);
 			if (new_fd < 0)
-				throw SysError("dup failed", errno);
+				throw SysError("\n---dup failed", errno);
 			_fd = new_fd;
 		}
 	}
@@ -94,73 +94,60 @@ void	FD::closeFD(void)
 
 FD	FD::openRO(const std::string &path)
 {
-	int	fd = ::open(path.c_str(), O_RDONLY);
+	int	fd = ::open(path.c_str(), O_RDONLY | O_NOFOLLOW);
 
 	if (fd < 0)
-		throw SysError("open(READ ONLY) failed: " + path, errno);
+		throw SysError("\n---open(O_RDONLY | O_NOFOLLOW) failed: " + path, errno);
 	return (FD(fd));
 }
 
 FD	FD::openWO(const std::string &path, bool create, mode_t mode)
 {
-	int	flags = O_WRONLY;
+	int	flags = O_WRONLY | O_NOFOLLOW;
 	int	fd;
 
 	if (create)
 		flags |= O_CREAT | O_TRUNC;
 	fd = ::open(path.c_str(), flags, mode);
 	if (fd < 0)
-		throw SysError("open(WRITE ONLY) failed: " + path, errno);
+		throw SysError("\n---open(O_WRONLY | O_NOFOLLOW | O_CREAT | O_TRUNC) failed: " + path, errno);
 	return (FD(fd));
 }
 
 FD	FD::openRW(const std::string &path, bool create, mode_t mode)
 {
-	int	flags = O_RDWR;
+	int	flags = O_RDWR | O_NOFOLLOW;
 	int	fd;
-
+	
 	if (create)
 		flags |= O_CREAT;
 	fd = ::open(path.c_str(), flags, mode);
 	if (fd < 0)
-		throw SysError("open(READ AND WRITE) failed: " + path, errno);
+		throw SysError("\n---open(O_RDWR | O_NOFOLLOW | O_CREAT) failed: " + path, errno);
 	return (FD(fd));
 }
 
-/*
- * Set file descriptor to non-blocking mode.
- *
- * Subject compliance: poll() and fcntl() are allowed and portable on both Linux and macOS.
- * Platform-specific guards are present for future maintainability.
- */
-void FD::setNonBlockingFD(bool enabled)
+/* Check non-blocking flag */
+void	FD::setNonBlockingFD(bool enabled)
 {
-    int flags = ::fcntl(_fd, F_GETFL, 0);
-    int rv;
-    if (flags < 0)
-        throw SysError("fcntl(F_GETFL) failed", errno);
-
-    if (enabled)
-        flags |= O_NONBLOCK;
-    else
-        flags &= ~O_NONBLOCK;
-
-    rv = ::fcntl(_fd, F_SETFL, flags);
-    if (rv < 0)
-        throw SysError("fcntl(F_SETFL) failed", errno);
-
-#ifdef __APPLE__
-    /* macOS specific*/
-    rv = ::fcntl(_fd, F_SETFD, FD_CLOEXEC);
-    if (rv < 0)
-        throw SysError("fcntl(F_SETFD, FD_CLOEXEC) failed", errno);
-#endif
+	int	flags = ::fcntl(_fd, F_GETFL, 0);
+	int	rv;
+	
+	if (flags < 0)
+		throw SysError("\n---fcntl(F_GETFL) failed", errno);
+	if (enabled)
+		flags |= O_NONBLOCK;
+	else
+		flags &= ~O_NONBLOCK;
+	rv = ::fcntl(_fd, F_SETFL, flags);
+	if (rv < 0)
+		throw SysError("\n---fcntl(F_SETFL) failed", errno);
 }
 
 bool	FD::isNonBlockingFD(void) const
 {
 	int	flags = ::fcntl(_fd, F_GETFL, 0);
 	if (flags < 0)
-		throw SysError("fcntl(F_GETFL) failed", errno);
+		throw SysError("\n---fcntl(F_GETFL) failed", errno);
 	return ((flags & O_NONBLOCK) != 0);
 }

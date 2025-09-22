@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 11:45:50 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:28:30 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 13:10:51 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,7 @@ Pipe::Pipe(void):_r(-1), _w(-1)
 	int		pipefd[2];
 
 	if (::pipe(pipefd) < 0)
-		throw SysError (std::string("pipe failed"), errno);
+		throw SysError (std::string("\n---pipe failed"), errno);
 	_r.resetFD(pipefd[0]);
 	_w.resetFD(pipefd[1]);
 }

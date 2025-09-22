@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 11:55:39 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 12:26:39 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 13:10:07 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,7 +55,7 @@ Resolver::resolver(void) const
 					&request, &result);
 	if (rv)
 	{
-		std::string	msg("getaddrinfo failed: ");
+		std::string	msg("\n---getaddrinfo failed: ");
 		msg += ::gai_strerror(rv);
 		throw SysError(msg, 0);
 	}
@@ -67,11 +67,10 @@ Resolver::resolver(void) const
 		if (curr->ai_addrlen > sizeof(t.first))
 		{
 #ifdef	_DEBUG
-			throw SysError("addrinfo result size too large for sockaddr_storage", 0);			
-#else
+			throw SysError("\n---addrinfo result size too large for sockaddr_storage", 0);			
+#endif
 			curr = curr->ai_next;
 			continue;
-#endif
 		}
 		else
 		{

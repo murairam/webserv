@@ -1,5 +1,16 @@
-#include "LocationConfig.hpp"
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   LocationConfig.cpp                                 :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/09/13 14:14:01 by yanli             #+#    #+#             */
+/*   Updated: 2025/09/17 13:36:01 by yanli            ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
+#include "LocationConfig.hpp"
 
 LocationConfig::LocationConfig(void)
 : _path_prefix(), _allowed_methods(0), _root(), _index_files(), _autoindex(false),
@@ -14,9 +25,10 @@ _redirect_code(other._redirect_code),
 _redirect_target(other._redirect_target), _client_max_body_size_override(other._client_max_body_size_override),
 _priority(other._priority), _cgi_handlers(other._cgi_handlers) {}
 
-LocationConfig &LocationConfig::operator=(const LocationConfig &other)
+LocationConfig	&LocationConfig::operator=(const LocationConfig &other)
 {
-	if (this != &other) {
+	if (this != &other)
+	{
 		_path_prefix = other._path_prefix;
 		_allowed_methods = other._allowed_methods;
 		_root = other._root;
@@ -30,7 +42,7 @@ LocationConfig &LocationConfig::operator=(const LocationConfig &other)
 		_priority = other._priority;
 		_cgi_handlers = other._cgi_handlers;
 	}
-	return *this;
+	return (*this);
 }
 
 LocationConfig::~LocationConfig(void) {}
@@ -114,7 +126,7 @@ void	LocationConfig::setRoot(std::string path)
 
 void	LocationConfig::setMethod(int method_mask)
 {
-	_allowed_methods = method_mask;
+	_allowed_methods = method_mask;	
 }
 
 void	LocationConfig::addIndexFile(std::string file)

@@ -3,15 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   Response.hpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 01:25:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 13:59:46 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/21 14:49:57 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef RESPONSE_HPP
 # define RESPONSE_HPP
+
 # include "_headers.hpp"
 # include "CodePage.hpp"
 
@@ -21,13 +22,15 @@ class	Response
 		int									_status_code;
 		std::map<std::string, std::string>	_headers;
 		std::string							_body;
-		CodePage							_code_page;
+		static CodePage						&_code_page(void);
 
 		std::string	intToString(size_t value) const;
 		std::string	getFileExtension(const std::string &filepath) const;
 		std::string	getMimeType(const std::string &extension) const;
 		std::string	generateDirectoryListingHTML(const std::string &path, const std::string &uri) const;
 
+		std::string	escapeHTML(const std::string &s) const;
+		
 	public:
 		Response(void);
 		Response(int status_code);
