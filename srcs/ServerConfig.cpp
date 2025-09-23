@@ -6,11 +6,12 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:19 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 14:11:51 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/23 12:21:19 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ServerConfig.hpp"
+
 ServerConfig::ServerConfig(void)
 :_server_name(), _listeners(), _client_max_body_size(-1), _error_pages(),
 _index_fallback(), _locations(), _priority(0)
