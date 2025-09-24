@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 12:42:21 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/23 12:21:56 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/24 12:41:44 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -154,5 +154,5 @@ ssize_t	Socket::recvIO(void *buf, size_t len, int flags) const
 			return (0);
 		throw SysError("\n---Unable to receive via socket", errno);
 	}
-	return (0);
+	return (n);
 }

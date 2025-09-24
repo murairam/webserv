@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConnectionManager.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 14:17:24 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 20:45:44 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/24 12:53:44 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,10 +16,12 @@
 
 ConnectionManager::ConnectionManager(void)
 :_conns(){}
+
 ConnectionManager::~ConnectionManager(void)
 {
 	drop_all();
 }
+
 Connection	*ConnectionManager::establish(int client_fd, const std::string &server_name, const ServerConfig *server_cfg, EventLoop &loop)
 {
 	try

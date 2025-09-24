@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: yanli <yanli@student.42.fr>                +#+  +:+       +#+         #
+#    By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/09/21 22:21:11 by yanli            ###   ########.fr        #
+#    Updated: 2025/09/24 12:43:37 by mmiilpal         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -24,7 +24,7 @@ SRCS_FILES		= main.cpp Endpoint.cpp LocationConfig.cpp ServerConfig.cpp \
 				CodePage.cpp timestring.cpp EventLoop.cpp \
 				IFdHandler.cpp Listener.cpp ListenerRegistry.cpp \
 				Connection.cpp ConnectionManager.cpp \
-				Response.cpp SignalHandler.cpp SignalFDHandler.cpp
+				Response.cpp SignalHandler.cpp SignalFDHandler.cpp Socket.cpp
 
 SRCS			= $(addprefix $(SRCS_DIR)/,$(SRCS_FILES))
 

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:07:49 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 22:34:10 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/24 14:19:00 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ _method(0),r()
 void	Connection::engageLoop(EventLoop &loop)
 {
 	int	events = EVENT_READ;
-	
+
 	if (_fd < 0)
 		return;
 	_loop = &loop;
@@ -55,7 +55,7 @@ void	Connection::parseGET(std::istream &s)
 	std::string			keyword;
 	std::string			valueword;
 	bool				toggle = true;
-	
+
 	while (std::getline(s, line))
 	{
 		iss.clear();
@@ -601,7 +601,7 @@ void	Connection::parseDELETE(std::istream &s)
 	std::string			keyword;
 	std::string			valueword;
 	bool				toggle = true;
-	
+
 	while (std::getline(s, line))
 	{
 		iss.clear();
@@ -831,7 +831,7 @@ void	Connection::disengageLoop(void)
 void	Connection::queueWrite(const std::string &data)
 {
 	int	events = EVENT_READ;
-	
+
 	if (_fd < 0)
 		return ;
 	_outbuf.append(data);
@@ -878,7 +878,7 @@ void	Connection::onReadable(int fd)
 	char	buf[8192];
 	ssize_t	n = ::recv(_fd, buf, static_cast<int>(8192u), 0);
 	(void)fd;
-	
+
 	if (n > 0)
 	{
 		_inbuf.append(buf, static_cast<size_t>(n));
@@ -927,6 +927,26 @@ void	Connection::dispatcher(void)
 	{
 		_method = GET_MASK;
 		parseGET(iss);
+		if (!r._should_reject) {
+			// 1. Find which location matches this request
+			const LocationConfig *loc = _server->matchLocation(r._target);
+			if (!loc) {
+				// No matching location = 404
+				sendErrorResponse(404);
+				return;
+			}
+
+			// 2. Build file path: root + requested path
+			std::string file_path = buildFilePath(loc, r._target);
+
+			// 3. Try to serve the file
+			if (!serveFile(file_path)) {
+				sendErrorResponse(404);
+				return;
+			}
+
+			_inbuf.clear();
+		}
 	}
 	else if (word == "POST")
 	{
@@ -979,7 +999,7 @@ void	Connection::onWritable(int fd)
 void	Connection::onError(int fd)
 {
 	(void)fd;
-	
+
 	if (_loop && _engaged)
 	{
 		_loop->remove(_fd);
@@ -995,7 +1015,7 @@ void	Connection::onError(int fd)
 void	Connection::onHangup(int fd)
 {
 	(void)fd;
-	
+
 	if (_loop && _engaged)
 	{
 		_loop->remove(_fd);
@@ -1011,7 +1031,7 @@ void	Connection::onHangup(int fd)
 void	Connection::onTick(int fd)
 {
 	(void)fd;
-	
+
 	if (_should_close && _outbuf.empty())
 	{
 		if (_loop && _engaged)
@@ -1025,4 +1045,96 @@ void	Connection::onTick(int fd)
 			_fd = -1;
 		}
 	}
+}
+
+std::string Connection::buildFilePath(const LocationConfig *loc, const std::string &target)
+{
+    std::string file_path = loc->getRoot();
+
+    // Handle root path "/"
+    if (target == "/") {
+        const std::vector<std::string> &index_files = loc->getIndexFiles();
+        if (!index_files.empty()) {
+            file_path += "/" + index_files[0];  // Use first index file
+        } else {
+            file_path += "/index.html";  // Default fallback
+        }
+    } else {
+        // Remove leading slash if root doesn't end with one
+        if (file_path.back() != '/' && target.front() == '/') {
+            file_path += target;
+        } else if (file_path.back() == '/' && target.front() == '/') {
+            file_path += target.substr(1);  // Remove duplicate slash
+        } else {
+            file_path += "/" + target;
+        }
+    }
+
+    return file_path;
+}
+
+bool Connection::serveFile(const std::string &file_path)
+{
+    std::ifstream file(file_path.c_str(), std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    // Read file content
+    std::string content((std::istreambuf_iterator<char>(file)),
+                        std::istreambuf_iterator<char>());
+    file.close();
+
+    // Determine content type
+    std::string content_type = getContentType(file_path);
+
+    // Build and send response
+    std::ostringstream oss;
+    oss << content.length();
+    std::string response =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: " + content_type + "\r\n"
+        "Content-Length: " + oss.str() + "\r\n"
+        "Connection: close\r\n"
+        "\r\n" + content;
+
+    queueWrite(response);
+    requestClose();
+    return true;
+}
+
+void Connection::sendErrorResponse(int code)
+{
+    std::string error_response =
+        "HTTP/1.1 " + intToString(code) + " Not Found\r\n"
+        "Content-Length: 0\r\n"
+        "Connection: close\r\n\r\n";
+    queueWrite(error_response);
+    requestClose();
+}
+
+std::string Connection::getContentType(const std::string &file_path) const
+{
+    // Simple content type detection
+    if (file_path.find(".html") != std::string::npos ||
+        file_path.find(".htm") != std::string::npos) {
+        return "text/html";
+    } else if (file_path.find(".css") != std::string::npos) {
+        return "text/css";
+    } else if (file_path.find(".js") != std::string::npos) {
+        return "application/javascript";
+    } else if (file_path.find(".png") != std::string::npos) {
+        return "image/png";
+    } else if (file_path.find(".jpg") != std::string::npos ||
+               file_path.find(".jpeg") != std::string::npos) {
+        return "image/jpeg";
+    }
+    return "text/plain";
+}
+
+std::string Connection::intToString(int value) const
+{
+    std::ostringstream oss;
+    oss << value;
+    return oss.str();
 }

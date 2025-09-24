@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:08:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 22:39:03 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/24 14:10:47 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,6 +63,12 @@ class	Connection: public IFdHandler
 		int			_method;
 		Request		r;
 
+		std::string buildFilePath(const LocationConfig *loc, const std::string &target);
+		bool serveFile(const std::string &file_path);
+		void sendErrorResponse(int code);
+		std::string getContentType(const std::string &file_path) const;
+		std::string intToString(int value) const;
+
 		void	parseGET(std::istream &s);
 		void	parsePOST(std::istream &s);
 		void	parseDELETE(std::istream &s);
@@ -91,7 +97,7 @@ class	Connection: public IFdHandler
 		const std::string	&getServerName(void) const;
 		bool	isEngaged(void) const;
 		bool	isClose(void) const;
-		
+
 		virtual void	onReadable(int fd);
 		virtual void	onWritable(int fd);
 		virtual void	onError(int fd);
