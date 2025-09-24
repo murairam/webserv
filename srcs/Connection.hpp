@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:08:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 22:39:03 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/24 21:40:09 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,10 @@
 # include "IFdHandler.hpp"
 # include "_headers.hpp"
 # include "ServerConfig.hpp"
+# include "Response.hpp"
+# include "CodePage.hpp"
+# include "utility.hpp"
+# include "LocationConfig.hpp"
 
 class	EventLoop;
 
@@ -50,6 +54,7 @@ class	Connection: public IFdHandler
 			bool		_err_code_set;
 			std::string	_body;
 			bool		_body_set;
+			bool		_job_done;
 		};
 
 		int			_fd;
@@ -62,12 +67,17 @@ class	Connection: public IFdHandler
 		const ServerConfig	*_server;
 		int			_method;
 		Request		r;
+		std::string	_header;
+		std::string	_body;
 
-		void	parseGET(std::istream &s);
-		void	parsePOST(std::istream &s);
-		void	parseDELETE(std::istream &s);
-		void	dispatcher(void);
+		void	parseGET(void);
+		void	parsePOST(void);
+		void	parseDELETE(void);
+		void	requestProccess(void);
 		void	resetRequest(void);
+
+		void	sendErrPage(int code);
+		void	sendResponse(Response &r);
 
 		Connection(void);
 		Connection(const Connection &other);
@@ -91,6 +101,7 @@ class	Connection: public IFdHandler
 		const std::string	&getServerName(void) const;
 		bool	isEngaged(void) const;
 		bool	isClose(void) const;
+		std::string	response(void);
 		
 		virtual void	onReadable(int fd);
 		virtual void	onWritable(int fd);

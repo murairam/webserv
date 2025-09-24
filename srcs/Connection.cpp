@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:07:49 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 22:34:10 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/24 22:11:33 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ Connection::Connection
 (int fd, const std::string &server_name, const ServerConfig *server)
 :_fd(fd), _loop(0), _server_name(server_name), _inbuf(),
 _outbuf(), _engaged(false), _should_close(false), _server(server),
-_method(0),r()
+_method(0), r(), _header(), _body()
 {
 	(void)set_nonblock_fd_nothrow(_fd);
 }
@@ -48,18 +48,39 @@ void	Connection::engageLoop(EventLoop &loop)
 	_loop->add(_fd, events, this);
 	_engaged = true;
 }
-void	Connection::parseGET(std::istream &s)
+
+void	Connection::sendResponse(Response &reply)
 {
-	std::istringstream	iss;
+	reply.setHeader(std::string("Connection"), std::string("close"));
+	queueWrite(reply.serialize());
+}
+
+void	Connection::sendErrPage(int code)
+{
+	Response	reply;
+	if (_server && !_server->getErrorPage(code).empty())
+		reply = Response::createErrorResponse(code, _server->getErrorPage(code));
+	else
+		reply = Response::createErrorResponse(code);
+	r._persistent = false;
+	sendResponse(reply);
+	r._job_done = true;
+	_should_close = true;
+	_inbuf.clear();
+}
+
+void	Connection::parseGET(void)
+{
+	std::istringstream	iss(_header);
 	std::string			line;
 	std::string			keyword;
 	std::string			valueword;
 	bool				toggle = true;
-	
-	while (std::getline(s, line))
+
+	if (r._job_done)
+		return;
+	while (std::getline(iss, line))
 	{
-		iss.clear();
-		iss.str(line);
 		keyword.clear();
 		valueword.clear();
 		if (!line.empty() && line[0] == '\r')
@@ -241,6 +262,7 @@ void	Connection::parseGET(std::istream &s)
 		r._err_code = 400;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(400);
 		return;
 	}
 	reject_501:
@@ -248,6 +270,7 @@ void	Connection::parseGET(std::istream &s)
 		r._err_code = 501;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(501);
 		return;
 	}
 	reject_505:
@@ -255,30 +278,28 @@ void	Connection::parseGET(std::istream &s)
 		r._err_code = 505;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(505);
 		return;
 	}
 }
 
-void	Connection::parsePOST(std::istream &s)
+void	Connection::parsePOST(void)
 {
-	std::istringstream	iss;
+	std::istringstream	iss(_header);
 	std::string			line;
 	std::string			keyword;
 	std::string			valueword;
 	bool				toggle = true;
-	bool				header_ended = false;
+	std::istringstream	iss2(_body);
 
-	while (std::getline(s, line))
+	if (r._job_done)
+		return;
+	while (std::getline(iss, line))
 	{
-		iss.clear();
-		iss.str(line);
 		keyword.clear();
 		valueword.clear();
 		if (!line.empty() && line[0] == '\r')
-		{
-			header_ended = true;
-			break ;
-		}
+			return ;
 		iss>>keyword;
 #ifdef	_DEBUG
 		std::cout<<line<<std::endl;
@@ -457,12 +478,11 @@ void	Connection::parsePOST(std::istream &s)
 		else
 			continue;
 	}
-	if (!header_ended)
-			goto reject_400;
 	if (!r._target_set || !r._host_set)
 			goto reject_400;
 	if (r._chunked && r._body_length_set)
 			goto reject_501;
+/*	From here it processes the _body part */
 	if (r._chunked)
 	{
 		std::string	body_buffer;
@@ -470,9 +490,9 @@ void	Connection::parsePOST(std::istream &s)
 		bool		saw_chunk_header = false;
 		while (true)
 		{
-			if (!std::getline(s, chunk_line))
+			if (!std::getline(iss2, chunk_line))
 			{
-				if (!saw_chunk_header && body_buffer.empty() && s.eof())
+				if (!saw_chunk_header && body_buffer.empty() && iss2.eof())
 				{
 					r._body.clear();
 					r._body_set = true;
@@ -499,7 +519,7 @@ void	Connection::parsePOST(std::istream &s)
 				while (true)
 				{
 					std::string	trailer_line;
-					if (!std::getline(s, trailer_line))
+					if (!std::getline(iss2, trailer_line))
 						goto reject_400;
 					if (!trailer_line.empty() && trailer_line[trailer_line.size() - 1] == '\r')
 						trailer_line.erase(trailer_line.size() - 1);
@@ -517,17 +537,17 @@ void	Connection::parsePOST(std::istream &s)
 			{
 				goto reject_413;
 			}
-			s.read(&chunk_buffer[0], static_cast<std::streamsize>(chunk_size));
-			if (s.gcount() != static_cast<std::streamsize>(chunk_size))
+			iss2.read(&chunk_buffer[0], static_cast<std::streamsize>(chunk_size));
+			if (iss2.gcount() != static_cast<std::streamsize>(chunk_size))
 				goto reject_400;
 			body_buffer.append(chunk_buffer);
-			int	cr = s.get();
-			int	lf = s.get();
+			int	cr = iss2.get();
+			int	lf = iss2.get();
 			if (cr == std::char_traits<char>::eof() || lf == std::char_traits<char>::eof()
 				|| cr != '\r' || lf != '\n')
 				goto reject_400;
 		}
-		r._body = body_buffer;
+		r._body = _body;
 		r._body_set = true;
 	}
 	else if (r._body_length_set)
@@ -546,8 +566,8 @@ void	Connection::parsePOST(std::istream &s)
 			{
 				goto reject_413;
 			}
-			s.read(&body_buffer[0], static_cast<std::streamsize>(length));
-			if (s.gcount() != static_cast<std::streamsize>(length))
+			iss2.read(&body_buffer[0], static_cast<std::streamsize>(length));
+			if (iss2.gcount() != static_cast<std::streamsize>(length))
 				goto reject_400;
 		}
 		r._body = body_buffer;
@@ -569,6 +589,7 @@ void	Connection::parsePOST(std::istream &s)
 		r._err_code = 400;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(400);
 		return;
 	}
 	reject_413:
@@ -576,6 +597,7 @@ void	Connection::parsePOST(std::istream &s)
 		r._err_code = 413;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(413);
 		return;
 	}
 	reject_501:
@@ -583,6 +605,7 @@ void	Connection::parsePOST(std::istream &s)
 		r._err_code = 501;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(501);
 		return;
 	}
 	reject_505:
@@ -590,22 +613,23 @@ void	Connection::parsePOST(std::istream &s)
 		r._err_code = 505;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(505);
 		return;
 	}
 }
 
-void	Connection::parseDELETE(std::istream &s)
+void	Connection::parseDELETE(void)
 {
-	std::istringstream	iss;
+	std::istringstream	iss(_header);
 	std::string			line;
 	std::string			keyword;
 	std::string			valueword;
 	bool				toggle = true;
 	
-	while (std::getline(s, line))
+	if (r._job_done)
+		return;
+	while (std::getline(iss, line))
 	{
-		iss.clear();
-		iss.str(line);
 		keyword.clear();
 		valueword.clear();
 		if (!line.empty() && line[0] == '\r')
@@ -789,6 +813,7 @@ void	Connection::parseDELETE(std::istream &s)
 		r._err_code = 400;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(400);
 		return;
 	}
 	reject_403:
@@ -796,6 +821,7 @@ void	Connection::parseDELETE(std::istream &s)
 		r._err_code = 403;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(403);
 		return;
 	}
 	reject_501:
@@ -803,6 +829,7 @@ void	Connection::parseDELETE(std::istream &s)
 		r._err_code = 501;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(501);
 		return;
 	}
 	reject_505:
@@ -810,6 +837,7 @@ void	Connection::parseDELETE(std::istream &s)
 		r._err_code = 505;
 		r._err_code_set = true;
 		r._should_reject = true;
+		sendErrPage(505);
 		return;
 	}
 }
@@ -878,11 +906,10 @@ void	Connection::onReadable(int fd)
 	char	buf[8192];
 	ssize_t	n = ::recv(_fd, buf, static_cast<int>(8192u), 0);
 	(void)fd;
-	
 	if (n > 0)
 	{
 		_inbuf.append(buf, static_cast<size_t>(n));
-		dispatcher();
+		requestProccess();
 	}
 	else if (!n)
 		_should_close = true;
@@ -912,35 +939,56 @@ void	Connection::resetRequest(void)
 	r._err_code_set = false;
 	r._body.clear();
 	r._body_set = false;
+	r._job_done = false;
+	_should_close = false;
+	_header.clear();
+	_body.clear();
 }
 
-void	Connection::dispatcher(void)
+void	Connection::requestProccess(void)
 {
 	Connection::resetRequest();
-	if (_inbuf.empty())
-		_should_close = true;
-	std::istringstream	iss(_inbuf);
+#ifdef	_DEBUG
+	std::cout<<"\n---received request---\n"<<_inbuf<<"---end of request---\n"<<std::endl;
+#endif
+	std::string::size_type	header_end = _inbuf.find("\r\n\r\n");
+	if (r._job_done || _inbuf.size() < 16 || header_end == std::string::npos)
+	{
+		sendErrPage(400);
+		return ;
+	}
+	_header = _inbuf.substr(0, header_end);
+	if (header_end + 4 < _inbuf.size())
+		_inbuf.erase(0, header_end + 4);
+	else
+		_inbuf.clear();
+	_body = _inbuf;
+#ifdef	_DEBUG
+	std::cout<<"\n---body content (if any) ---"<<_body<<"---end of body---"<<std::endl;
+#endif
+	std::istringstream	iss(_header);
 	std::string	word;
-	if (!(iss>>word))
-		_should_close = true;
-	else if (word == "GET")
+	iss>>word;
+	if (word == "GET")
 	{
 		_method = GET_MASK;
-		parseGET(iss);
+		parseGET();
 	}
 	else if (word == "POST")
 	{
 		_method = POST_MASK;
-		parsePOST(iss);
+		parsePOST();
 	}
 	else if (word == "DELETE")
 	{
 		_method = DELETE_MASK;
-		parseDELETE(iss);
+		parseDELETE();
 	}
 	else if (word == "PATCH" || word == "OPTIONS" || word == "CONNECT"
 			|| word == "PUT" || word == "TRACE" || word == "HEAD")
-		_should_close = true;
+			sendErrPage(405);
+	else
+		sendErrPage(400);
 }
 
 void	Connection::onWritable(int fd)

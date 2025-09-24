@@ -3,17 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   ServerConfig.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:19 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 14:11:51 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/16 18:35:30 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ServerConfig.hpp"
 ServerConfig::ServerConfig(void)
 :_server_name(), _listeners(), _client_max_body_size(-1), _error_pages(),
-_index_fallback(), _locations(), _priority(0)
+_index_fallback(), _locations()
 {
 
 }
@@ -22,8 +22,7 @@ ServerConfig::ServerConfig(const ServerConfig &other)
 :_server_name(other._server_name), _listeners(other._listeners),
 _client_max_body_size(other._client_max_body_size),
 _error_pages(other._error_pages), _index_fallback(other._index_fallback),
-_locations(other._locations) , _priority(other._priority)
-{}
+_locations(other._locations) {}
 
 ServerConfig	&ServerConfig::operator=(const ServerConfig &other)
 {
@@ -35,7 +34,6 @@ ServerConfig	&ServerConfig::operator=(const ServerConfig &other)
 		_error_pages = other._error_pages;
 		_index_fallback = other._index_fallback;
 		_locations = other._locations;
-		_priority = other._priority;
 	}
 	return (*this);
 }
@@ -61,7 +59,7 @@ const LocationConfig	*ServerConfig::matchLocation(const std::string &path) const
 {
 	if (path.empty())
 		return (0);
-
+		
 	size_t					best_len = 0;
 	size_t					i = 0;
 	const LocationConfig	*best = 0;

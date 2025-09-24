@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 20:03:38 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/24 04:09:11 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,6 +66,7 @@ int	main(int argc, char **argv, char **envp)
 			cfg = ConfigLoader();
 #ifdef	_DEBUG
 		cfg.debug();
+		std::cout<<"\nwebserv PID: "<<::getpid()<<std::endl;
 #endif
 		if (cfg.selfcheck())
 		{
@@ -74,8 +75,13 @@ int	main(int argc, char **argv, char **envp)
 		}
 /*	---Signal handler START---
 */
-		signal_handler.addSignal(SIGINT);
-		signal_handler.addSignal(SIGTERM);
+		signal_handler.addSignalHandle(SIGINT);
+		signal_handler.addSignalHandle(SIGTERM);
+		signal_handler.addSignalIgnore(SIGUSR1);
+		signal_handler.addSignalIgnore(SIGUSR2);
+		signal_handler.addSignalIgnore(SIGPIPE);
+		signal_handler.addSignalIgnore(SIGTRAP);
+		signal_handler.addSignalIgnore(SIGALRM);
 		if (!signal_handler.install())
 			throw std::runtime_error("\n---Signal handler installation failed, you will need to manually abort the webserv");
 		signal_installed = true;

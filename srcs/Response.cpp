@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 01:24:56 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 14:49:42 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 14:42:37 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,7 @@ Response::Response(int status_code)
 
 Response::Response(const Response &other)
 :_status_code(other._status_code), _headers(other._headers),
-_body(other._body){} 
+_body(other._body) {} 
 
 Response	&Response::operator=(const Response &other)
 {
