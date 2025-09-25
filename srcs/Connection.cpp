@@ -5,13 +5,15 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/21 20:07:49 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/24 14:19:00 by mmiilpal         ###   ########.fr       */
+/*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
+/*   Updated: 2025/09/25 12:14:08 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Connection.hpp"
 #include "EventLoop.hpp"
+#include "HttpRequestParser.hpp"
+#include "Response.hpp"
 
 Connection::~Connection(void)
 {
@@ -27,11 +29,10 @@ Connection::~Connection(void)
 	}
 }
 
-Connection::Connection
-(int fd, const std::string &server_name, const ServerConfig *server)
+Connection::Connection(int fd, const std::string &server_name, const ServerConfig *server)
 :_fd(fd), _loop(0), _server_name(server_name), _inbuf(),
 _outbuf(), _engaged(false), _should_close(false), _server(server),
-_method(0),r()
+_method(0)
 {
 	(void)set_nonblock_fd_nothrow(_fd);
 }
@@ -47,771 +48,6 @@ void	Connection::engageLoop(EventLoop &loop)
 		events = events | EVENT_WRITE;
 	_loop->add(_fd, events, this);
 	_engaged = true;
-}
-void	Connection::parseGET(std::istream &s)
-{
-	std::istringstream	iss;
-	std::string			line;
-	std::string			keyword;
-	std::string			valueword;
-	bool				toggle = true;
-
-	while (std::getline(s, line))
-	{
-		iss.clear();
-		iss.str(line);
-		keyword.clear();
-		valueword.clear();
-		if (!line.empty() && line[0] == '\r')
-			return ;
-		iss>>keyword;
-#ifdef	_DEBUG
-		std::cout<<line<<std::endl;
-		std::cout<<"keyword being evaluated is:'"<<keyword<<"'"<<std::endl;
-#endif
-		if (toggle)
-		{
-			toggle = false;
-			if (keyword.empty())
-				goto reject_400;
-			std::string::size_type	query_mark_pos = keyword.find('?');
-			if (query_mark_pos != std::string::npos)
-			{
-				std::string	target = keyword.substr(0, query_mark_pos);
-				if (query_mark_pos + 1 >= keyword.size())
-				{
-					r._target = target;
-					r._target_set = true;
-					continue;
-				}
-				std::string	query = keyword.substr(query_mark_pos + 1, keyword.size());
-				r._target = target;
-				r._target_set = true;
-				r._query = query;
-				r._query_set = true;
-			}
-			else
-			{
-				std::string	target = keyword;
-				r._target = target;
-				r._target_set = true;
-			}
-			iss>>std::ws;
-			std::getline(iss, valueword, '\r');
-			valueword = trim(valueword);
-			if (valueword != "HTTP/1.1")
-				goto reject_505;
-		}
-		else if (keyword == "Connection:")
-		{
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r'))
-				goto reject_400;
-			valueword = trim(valueword);
-			std::string	lowered = toLower(valueword);
-			if (lowered.empty())
-				goto reject_400;
-			std::istringstream	conn_stream(lowered);
-			std::string			conn_token;
-			while (std::getline(conn_stream, conn_token, ','))
-			{
-				conn_token = trim(conn_token);
-				if (conn_token == "close")
-					r._persistent = false;
-				else if (conn_token == "keep-alive")
-					continue;
-			}
-		}
-		else if (keyword == "Host:")
-		{
-			if (r._host_set)
-				goto reject_400;
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r'))
-				goto reject_400;
-			valueword = trim(valueword);
-			if (valueword.empty())
-				goto reject_400;
-			std::string	host;
-			std::string	port_candidate;
-			bool		port_present = false;
-			if (valueword[0] == '[')
-				goto reject_505;
-			else
-			{
-				std::string::size_type	colon_mark_pos = valueword.find(':');
-				if (colon_mark_pos != std::string::npos)
-				{
-					host = valueword.substr(0, colon_mark_pos);
-					port_candidate = trim(valueword.substr(colon_mark_pos + 1));
-					port_present = true;
-				}
-				else
-					host = valueword;
-			}
-			host = trim(host);
-			if (host.empty())
-				goto reject_400;
-			if (port_present)
-			{
-				if (port_candidate.empty())
-					goto reject_400;
-				if (port_candidate.find_first_not_of("0123456789") != std::string::npos)
-					goto reject_400;
-				long	portvalue = std::strtol(port_candidate.c_str(), NULL, 10);
-				if (portvalue < 0 || portvalue > 65535)
-					goto reject_400;
-				r._port = static_cast<int>(portvalue);
-				r._port_set = true;
-			}
-			r._host = host;
-			r._host_set = true;
-		}
-		else if (keyword == "Authorization:")
-		{
-			std::string	auth_type;
-			std::string	auth_value;
-			auth_type.clear();
-			auth_value.clear();
-			iss>>auth_type;
-			iss>>std::ws;
-			if (!std::getline(iss, auth_value, '\r') || auth_type.empty())
-				goto reject_400;
-			auth_value = trim(auth_value);
-			if (auth_value.empty())
-				goto reject_400;
-			r._auth[auth_type] = auth_value;
-			r._auth_set = true;
-		}
-		else if (keyword == "Cookie:")
-		{
-			std::string	cookie_line;
-			iss>>std::ws;
-			if (!std::getline(iss, cookie_line, '\r'))
-				continue;
-			cookie_line = trim(cookie_line);
-			if (cookie_line.empty())
-				continue;
-			std::istringstream	cookie_stream(cookie_line);
-			std::string	cookie_pair;
-			while (std::getline(cookie_stream, cookie_pair, ';'))
-			{
-				cookie_pair = trim(cookie_pair);
-				if (cookie_pair.empty())
-					continue;
-				std::string::size_type	equal_mark_pos = cookie_pair.find('=');
-				if (equal_mark_pos == std::string::npos)
-					continue;
-				std::string	c1 = trim(cookie_pair.substr(0, equal_mark_pos));
-				std::string	c2 = trim(cookie_pair.substr(equal_mark_pos + 1));
-				if (c1.empty())
-					continue;
-				r._cookie[c1] = c2;
-				r._cookie_set = true;
-			}
-			#ifdef	_DEBUG
-			std::map<std::string,std::string>::const_iterator	it = r._cookie.begin();
-			while (it != r._cookie.end())
-			{
-				std::cout<<it->first<<"\n"<<it->second<<std::endl;
-				it++;
-			}
-			#endif
-		}
-		else if (keyword == "Transfer-Encoding:")
-		{
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r') || valueword != "chunked")
-				goto reject_501;
-			r._chunked = true;
-		}
-		else if (keyword == "Content-Length:")
-			r._body_length_set = true;
-		else
-			continue;
-	}
-	if (!r._target_set || !r._host_set)
-		goto reject_400;
-	if (r._chunked && r._body_length_set)
-		goto reject_501;
-	return;
-
-	reject_400:
-	{
-		r._err_code = 400;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
-	reject_501:
-	{
-		r._err_code = 501;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
-	reject_505:
-	{
-		r._err_code = 505;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
-}
-
-void	Connection::parsePOST(std::istream &s)
-{
-	std::istringstream	iss;
-	std::string			line;
-	std::string			keyword;
-	std::string			valueword;
-	bool				toggle = true;
-	bool				header_ended = false;
-
-	while (std::getline(s, line))
-	{
-		iss.clear();
-		iss.str(line);
-		keyword.clear();
-		valueword.clear();
-		if (!line.empty() && line[0] == '\r')
-		{
-			header_ended = true;
-			break ;
-		}
-		iss>>keyword;
-#ifdef	_DEBUG
-		std::cout<<line<<std::endl;
-		std::cout<<"keyword being evaluated is:'"<<keyword<<"'"<<std::endl;
-#endif
-		if (toggle)
-		{
-			toggle = false;
-			if (r._should_reject)
-				return ;
-			if (keyword.empty())
-				goto reject_400;
-			std::string::size_type	query_mark_pos = keyword.find('?');
-			if (query_mark_pos != std::string::npos)
-			{
-				std::string	target = keyword.substr(0, query_mark_pos);
-				if (query_mark_pos + 1 >= keyword.size())
-				{
-					r._target = target;
-					r._target_set = true;
-					continue;
-				}
-				std::string	query = keyword.substr(query_mark_pos + 1, keyword.size());
-				r._target = target;
-				r._target_set = true;
-				r._query = query;
-				r._query_set = true;
-			}
-			else
-			{
-				std::string	target = keyword;
-				r._target = target;
-				r._target_set = true;
-			}
-			iss>>std::ws;
-			std::getline(iss, valueword, '\r');
-			valueword = trim(valueword);
-			if (valueword != "HTTP/1.1")
-				goto reject_505;
-		}
-		else if (keyword == "Connection:")
-		{
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r'))
-				goto reject_400;
-			valueword = trim(valueword);
-			std::string	lowered = toLower(valueword);
-			if (lowered.empty())
-				goto reject_400;
-			std::istringstream	conn_stream(lowered);
-			std::string			conn_token;
-			while (std::getline(conn_stream, conn_token, ','))
-			{
-				conn_token = trim(conn_token);
-				if (conn_token == "close")
-					r._persistent = false;
-				else if (conn_token == "keep-alive")
-					continue;
-			}
-		}
-		else if (keyword == "Host:")
-		{
-			if (r._host_set)
-				goto reject_400;
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r'))
-				goto reject_400;
-			valueword = trim(valueword);
-			if (valueword.empty())
-				goto reject_400;
-			std::string	host;
-			std::string	port_candidate;
-			bool		port_present = false;
-			if (valueword[0] == '[')
-				goto reject_505;
-			else
-			{
-				std::string::size_type	colon_mark_pos = valueword.find(':');
-				if (colon_mark_pos != std::string::npos)
-				{
-					host = valueword.substr(0, colon_mark_pos);
-					port_candidate = trim(valueword.substr(colon_mark_pos + 1));
-					port_present = true;
-				}
-				else
-					host = valueword;
-			}
-			host = trim(host);
-			if (host.empty())
-				goto reject_400;
-			if (port_present)
-			{
-				if (port_candidate.empty())
-					goto reject_400;
-				if (port_candidate.find_first_not_of("0123456789") != std::string::npos)
-					goto reject_400;
-				long	portvalue = std::strtol(port_candidate.c_str(), NULL, 10);
-				if (portvalue < 0 || portvalue > 65535)
-					goto reject_400;
-				r._port = static_cast<int>(portvalue);
-				r._port_set = true;
-			}
-			r._host = host;
-			r._host_set = true;
-		}
-		else if (keyword == "Authorization:")
-		{
-			std::string	auth_type;
-			std::string	auth_value;
-			auth_type.clear();
-			auth_value.clear();
-			iss>>auth_type;
-			iss>>std::ws;
-			if (!std::getline(iss, auth_value, '\r') || auth_type.empty())
-				goto reject_400;
-			auth_value = trim(auth_value);
-			if (auth_value.empty())
-				goto reject_400;
-			r._auth[auth_type] = auth_value;
-			r._auth_set = true;
-		}
-		else if (keyword == "Cookie:")
-		{
-			std::string	cookie_line;
-			iss>>std::ws;
-			if (!std::getline(iss, cookie_line, '\r'))
-				goto reject_400;
-			cookie_line = trim(cookie_line);
-			if (cookie_line.empty())
-				continue;
-			std::istringstream	cookie_stream(cookie_line);
-			std::string	cookie_pair;
-			while (std::getline(cookie_stream, cookie_pair, ';'))
-			{
-				cookie_pair = trim(cookie_pair);
-				if (cookie_pair.empty())
-					continue;
-				std::string::size_type	equal_mark_pos = cookie_pair.find('=');
-				if (equal_mark_pos == std::string::npos)
-					continue;
-				std::string	c1 = trim(cookie_pair.substr(0, equal_mark_pos));
-				std::string	c2 = trim(cookie_pair.substr(equal_mark_pos + 1));
-				if (c1.empty())
-					continue;
-				r._cookie[c1] = c2;
-				r._cookie_set = true;
-			}
-			#ifdef	_DEBUG
-			std::map<std::string,std::string>::const_iterator	it = r._cookie.begin();
-			while (it != r._cookie.end())
-			{
-				std::cout<<it->first<<"\n"<<it->second<<std::endl;
-				it++;
-			}
-			#endif
-		}
-		else if (keyword == "Transfer-Encoding:")
-		{
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r') || valueword != "chunked")
-				goto reject_501;
-			r._chunked = true;
-		}
-		else if (keyword == "Content-Length:")
-		{
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r'))
-				goto reject_400;
-			valueword = trim(valueword);
-			if (valueword.empty() || valueword.find_first_not_of("0123456789") != std::string::npos)
-				goto reject_400;
-			long	len = std::atol(valueword.c_str());
-			r._body_length = len;
-			r._body_length_set = true;
-		}
-		else
-			continue;
-	}
-	if (!header_ended)
-			goto reject_400;
-	if (!r._target_set || !r._host_set)
-			goto reject_400;
-	if (r._chunked && r._body_length_set)
-			goto reject_501;
-	if (r._chunked)
-	{
-		std::string	body_buffer;
-		std::string	chunk_line;
-		bool		saw_chunk_header = false;
-		while (true)
-		{
-			if (!std::getline(s, chunk_line))
-			{
-				if (!saw_chunk_header && body_buffer.empty() && s.eof())
-				{
-					r._body.clear();
-					r._body_set = true;
-					return ;
-				}
-					goto reject_400;
-			}
-			saw_chunk_header = true;
-			if (!chunk_line.empty() && chunk_line[chunk_line.size() - 1] == '\r')
-				chunk_line.erase(chunk_line.size() - 1);
-			chunk_line = trim(chunk_line);
-			if (chunk_line.empty())
-				goto reject_400;
-			std::string::size_type	semicolon_pos = chunk_line.find(';');
-			if (semicolon_pos != std::string::npos)
-				chunk_line = trim(chunk_line.substr(0, semicolon_pos));
-			if (chunk_line.empty() || chunk_line.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)
-				goto reject_400;
-			long	chunk_size = std::strtol(chunk_line.c_str(), NULL, 16);
-			if (chunk_size < 0)
-				goto reject_400;
-			if (chunk_size == 0)
-			{
-				while (true)
-				{
-					std::string	trailer_line;
-					if (!std::getline(s, trailer_line))
-						goto reject_400;
-					if (!trailer_line.empty() && trailer_line[trailer_line.size() - 1] == '\r')
-						trailer_line.erase(trailer_line.size() - 1);
-					if (trim(trailer_line).empty())
-						break ;
-				}
-				break ;
-			}
-			std::string	chunk_buffer;
-			try
-			{
-				chunk_buffer.resize(static_cast<std::size_t>(chunk_size));
-			}
-			catch (const std::exception &)
-			{
-				goto reject_413;
-			}
-			s.read(&chunk_buffer[0], static_cast<std::streamsize>(chunk_size));
-			if (s.gcount() != static_cast<std::streamsize>(chunk_size))
-				goto reject_400;
-			body_buffer.append(chunk_buffer);
-			int	cr = s.get();
-			int	lf = s.get();
-			if (cr == std::char_traits<char>::eof() || lf == std::char_traits<char>::eof()
-				|| cr != '\r' || lf != '\n')
-				goto reject_400;
-		}
-		r._body = body_buffer;
-		r._body_set = true;
-	}
-	else if (r._body_length_set)
-	{
-		long	length = r._body_length;
-		if (length < 0)
-				goto reject_400;
-		std::string	body_buffer;
-		if (length > 0)
-		{
-			try
-			{
-				body_buffer.resize(static_cast<std::size_t>(length));
-			}
-			catch (const std::exception &)
-			{
-				goto reject_413;
-			}
-			s.read(&body_buffer[0], static_cast<std::streamsize>(length));
-			if (s.gcount() != static_cast<std::streamsize>(length))
-				goto reject_400;
-		}
-		r._body = body_buffer;
-		r._body_set = true;
-	}
-	else
-	{
-		r._body.clear();
-		r._body_set = true;
-	}
-	if (!r._target_set || !r._host_set)
-		goto reject_400;
-	if (r._chunked && r._body_length_set)
-		goto reject_501;
-	return;
-
-	reject_400:
-	{
-		r._err_code = 400;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
-	reject_413:
-	{
-		r._err_code = 413;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
-	reject_501:
-	{
-		r._err_code = 501;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
-	reject_505:
-	{
-		r._err_code = 505;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
-}
-
-void	Connection::parseDELETE(std::istream &s)
-{
-	std::istringstream	iss;
-	std::string			line;
-	std::string			keyword;
-	std::string			valueword;
-	bool				toggle = true;
-
-	while (std::getline(s, line))
-	{
-		iss.clear();
-		iss.str(line);
-		keyword.clear();
-		valueword.clear();
-		if (!line.empty() && line[0] == '\r')
-			return ;
-		iss>>keyword;
-#ifdef	_DEBUG
-		std::cout<<line<<std::endl;
-		std::cout<<"keyword being evaluated is:'"<<keyword<<"'"<<std::endl;
-#endif
-		if (toggle)
-		{
-			toggle = false;
-			if (keyword.empty())
-				goto reject_400;
-			std::string::size_type	query_mark_pos = keyword.find('?');
-			if (query_mark_pos != std::string::npos)
-			{
-				std::string	target = keyword.substr(0, query_mark_pos);
-				if (query_mark_pos + 1 >= keyword.size())
-				{
-					r._target = target;
-					r._target_set = true;
-					continue;
-				}
-				std::string	query = keyword.substr(query_mark_pos + 1, keyword.size());
-				r._target = target;
-				r._target_set = true;
-				r._query = query;
-				r._query_set = true;
-			}
-			else
-			{
-				std::string	target = keyword;
-				r._target = target;
-				r._target_set = true;
-			}
-			iss>>std::ws;
-			std::getline(iss, valueword, '\r');
-			valueword = trim(valueword);
-			if (valueword != "HTTP/1.1")
-				goto reject_505;
-		}
-		else if (keyword == "Connection:")
-		{
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r'))
-				goto reject_400;
-			valueword = trim(valueword);
-			std::string	lowered = toLower(valueword);
-			if (lowered.empty())
-				goto reject_400;
-			std::istringstream	conn_stream(lowered);
-			std::string			conn_token;
-			while (std::getline(conn_stream, conn_token, ','))
-			{
-				conn_token = trim(conn_token);
-				if (conn_token == "close")
-					r._persistent = false;
-				else if (conn_token == "keep-alive")
-					continue;
-			}
-		}
-		else if (keyword == "Host:")
-		{
-			if (r._host_set)
-				goto reject_400;
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r'))
-				goto reject_400;
-			valueword = trim(valueword);
-			if (valueword.empty())
-				goto reject_400;
-			std::string	host;
-			std::string	port_candidate;
-			bool		port_present = false;
-			if (valueword[0] == '[')
-				goto reject_505;
-			else
-			{
-				std::string::size_type	colon_mark_pos = valueword.find(':');
-				if (colon_mark_pos != std::string::npos)
-				{
-					host = valueword.substr(0, colon_mark_pos);
-					port_candidate = trim(valueword.substr(colon_mark_pos + 1));
-					port_present = true;
-				}
-				else
-					host = valueword;
-			}
-			host = trim(host);
-			if (host.empty())
-				goto reject_400;
-			if (port_present)
-			{
-				if (port_candidate.empty())
-					goto reject_400;
-				if (port_candidate.find_first_not_of("0123456789") != std::string::npos)
-					goto reject_400;
-				long	portvalue = std::strtol(port_candidate.c_str(), NULL, 10);
-				if (portvalue < 0 || portvalue > 65535)
-					goto reject_400;
-				r._port = static_cast<int>(portvalue);
-				r._port_set = true;
-			}
-			r._host = host;
-			r._host_set = true;
-		}
-		else if (keyword == "Authorization:")
-		{
-			std::string	auth_type;
-			std::string	auth_value;
-			auth_type.clear();
-			auth_value.clear();
-			iss>>auth_type;
-			iss>>std::ws;
-			if (!std::getline(iss, auth_value, '\r') || auth_type.empty())
-				goto reject_400;
-			auth_value = trim(auth_value);
-			if (auth_value.empty())
-				goto reject_400;
-			r._auth[auth_type] = auth_value;
-			r._auth_set = true;
-		}
-		else if (keyword == "Cookie:")
-		{
-			std::string	cookie_line;
-			iss>>std::ws;
-			if (!std::getline(iss, cookie_line, '\r'))
-				continue;
-			cookie_line = trim(cookie_line);
-			if (cookie_line.empty())
-				continue;
-			std::istringstream	cookie_stream(cookie_line);
-			std::string	cookie_pair;
-			while (std::getline(cookie_stream, cookie_pair, ';'))
-			{
-				cookie_pair = trim(cookie_pair);
-				if (cookie_pair.empty())
-					continue;
-				std::string::size_type	equal_mark_pos = cookie_pair.find('=');
-				if (equal_mark_pos == std::string::npos)
-					continue;
-				std::string	c1 = trim(cookie_pair.substr(0, equal_mark_pos));
-				std::string	c2 = trim(cookie_pair.substr(equal_mark_pos + 1));
-				if (c1.empty())
-					continue;
-				r._cookie[c1] = c2;
-				r._cookie_set = true;
-			}
-			#ifdef	_DEBUG
-			std::map<std::string,std::string>::const_iterator	it = r._cookie.begin();
-			while (it != r._cookie.end())
-			{
-				std::cout<<it->first<<"\n"<<it->second<<std::endl;
-				it++;
-			}
-			#endif
-		}
-		else if (keyword == "Transfer-Encoding:")
-		{
-			iss>>std::ws;
-			if (!std::getline(iss, valueword, '\r') || valueword != "chunked")
-				goto reject_501;
-			r._chunked = true;
-		}
-		else if (keyword == "Content-Length:")
-			r._body_length_set = true;
-		else
-			continue;
-	}
-	if (!r._target_set || !r._host_set)
-		goto reject_400;
-	if (r._chunked && r._body_length_set)
-		goto reject_501;
-	if (!r._cookie_set)
-		goto reject_403;
-	return;
-
-	reject_400:
-	{
-		r._err_code = 400;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
-	reject_403:
-	{
-		r._err_code = 403;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
-	reject_501:
-	{
-		r._err_code = 501;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
-	reject_505:
-	{
-		r._err_code = 505;
-		r._err_code_set = true;
-		r._should_reject = true;
-		return;
-	}
 }
 
 void	Connection::disengageLoop(void)
@@ -889,78 +125,555 @@ void	Connection::onReadable(int fd)
 	/* n < 0 must be ignored, otherwise this shit blocks and all fuck up*/
 }
 
-void	Connection::resetRequest(void)
-{
-	r._target.clear();
-	r._target_set = false;
-	r._query.clear();
-	r._query_set = false;
-	r._host.clear();
-	r._host_set = false;
-	r._port = 0;
-	r._port_set = false;
-	r._auth.clear();
-	r._auth_set = false;
-	r._cookie.clear();
-	r._cookie_set = false;
-	r._should_reject = false;
-	r._persistent = true;
-	r._chunked = false;
-	r._body_length = 0;
-	r._body_length_set = false;
-	r._err_code = 0;
-	r._err_code_set = false;
-	r._body.clear();
-	r._body_set = false;
-}
-
 void	Connection::dispatcher(void)
 {
-	Connection::resetRequest();
+#ifdef _DEBUG
+	std::cerr << "\n=== CONNECTION DISPATCHER START ===" << std::endl;
+	std::cerr << "Input buffer size: " << _inbuf.size() << " bytes" << std::endl;
+#endif
+
 	if (_inbuf.empty())
-		_should_close = true;
-	std::istringstream	iss(_inbuf);
-	std::string	word;
-	if (!(iss>>word))
-		_should_close = true;
-	else if (word == "GET")
 	{
-		_method = GET_MASK;
-		parseGET(iss);
-		if (!r._should_reject) {
-			// 1. Find which location matches this request
-			const LocationConfig *loc = _server->matchLocation(r._target);
-			if (!loc) {
-				// No matching location = 404
-				sendErrorResponse(404);
-				return;
-			}
+		_should_close = true;
+		return;
+	}
 
-			// 2. Build file path: root + requested path
-			std::string file_path = buildFilePath(loc, r._target);
+	// TRY NEW PARSER FIRST
+	if (handleRequestWithNewParser())
+	{
+#ifdef _DEBUG
+		std::cerr << "SUCCESS: New parser handled request, clearing input buffer" << std::endl;
+#endif
+		_inbuf.clear();  // Request handled successfully
+		return;
+	}
 
-			// 3. Try to serve the file
-			if (!serveFile(file_path)) {
-				sendErrorResponse(404);
-				return;
-			}
+	// If we get here, the new parser failed - this shouldn't happen now
+#ifdef _DEBUG
+	std::cerr << "ERROR: New parser failed - this should not happen!" << std::endl;
+#endif
+	_should_close = true;
+}
 
-			_inbuf.clear();
+bool Connection::handleRequestWithNewParser(void)
+{
+	try
+	{
+		// Check if we have a complete request
+		if (!HttpRequestParser::isCompleteRequest(_inbuf))
+		{
+#ifdef _DEBUG
+			std::cerr << "DEBUG: Incomplete request, waiting for more data" << std::endl;
+#endif
+			return false;  // Wait for more data
+		}
+
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Complete request detected, parsing..." << std::endl;
+#endif
+
+		// Parse the request
+		HttpRequest request = HttpRequestParser::parse(_inbuf);
+
+		// Check for parsing errors
+		if (request.getShouldReject())
+		{
+#ifdef _DEBUG
+			std::cerr << "DEBUG: Parser rejected request with code " << request.getErrorCode() << std::endl;
+#endif
+			sendErrorResponse(request.getErrorCode());
+			return true;  // Handled (with error)
+		}
+
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Successfully parsed " << request.getMethod()
+				  << " request for " << request.getPath() << std::endl;
+		if (!request.getQuery().empty())
+			std::cerr << "DEBUG: Query string: " << request.getQuery() << std::endl;
+		if (!request.getBody().empty())
+			std::cerr << "DEBUG: Body length: " << request.getBody().length() << " bytes" << std::endl;
+		std::cerr << "DEBUG: Headers count: " << request.toCgiEnvironment().size() << std::endl;
+#endif
+
+		// Successful parse - handle the request
+		handleParsedRequest(request);
+		return true;  // Successfully handled
+	}
+	catch (const std::exception& e)
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: New parser exception: " << e.what() << std::endl;
+#endif
+		return false;  // This triggers error handling above
+	}
+}
+
+void Connection::handleParsedRequest(const HttpRequest& request)
+{
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Handling parsed request - Method: " << request.getMethod()
+			  << ", Path: " << request.getPath() << std::endl;
+#endif
+
+	// Set method for compatibility with existing code
+	_method = MethodTokenToMask(request.getMethod());
+
+	// Find matching location for all methods
+	const LocationConfig *loc = _server->matchLocation(request.getPath());
+	if (!loc) {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: No matching location found for " << request.getPath() << std::endl;
+#endif
+		sendErrorResponse(404);
+		return;
+	}
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Found location match, prefix: " << loc->getPathPrefix() << std::endl;
+#endif
+
+	// Check if method is allowed
+	if (!loc->MethodIsAllowed(_method)) {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Method " << request.getMethod() << " not allowed in this location" << std::endl;
+#endif
+		sendErrorResponse(405);  // Method Not Allowed
+		return;
+	}
+
+	// Check body size limits (for POST requests)
+	if (request.getMethod() == "POST") {
+		long body_limit = _server->getBodyLimit(loc);
+		if (body_limit >= 0 && static_cast<long>(request.getBody().length()) > body_limit) {
+#ifdef _DEBUG
+			std::cerr << "DEBUG: Body size " << request.getBody().length()
+					  << " exceeds limit " << body_limit << std::endl;
+#endif
+			sendErrorResponse(413);  // Payload Too Large
+			return;
 		}
 	}
-	else if (word == "POST")
+
+	// Handle by method
+	if (request.getMethod() == "GET")
 	{
-		_method = POST_MASK;
-		parsePOST(iss);
+		handleGetRequest(request, loc);
 	}
-	else if (word == "DELETE")
+	else if (request.getMethod() == "POST")
 	{
-		_method = DELETE_MASK;
-		parseDELETE(iss);
+		handlePostRequest(request, loc);
 	}
-	else if (word == "PATCH" || word == "OPTIONS" || word == "CONNECT"
-			|| word == "PUT" || word == "TRACE" || word == "HEAD")
-		_should_close = true;
+	else if (request.getMethod() == "DELETE")
+	{
+		handleDeleteRequest(request, loc);
+	}
+	else
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Unsupported method: " << request.getMethod() << std::endl;
+#endif
+		sendErrorResponse(405);  // Method Not Allowed
+	}
+}
+
+void Connection::handleGetRequest(const HttpRequest& request, const LocationConfig* loc)
+{
+#ifdef _DEBUG
+	std::cerr << "DEBUG: === HANDLING GET REQUEST ===" << std::endl;
+	std::cerr << "DEBUG: Path: " << request.getPath() << std::endl;
+	std::cerr << "DEBUG: Location root: " << loc->getRoot() << std::endl;
+#endif
+
+	// Check for redirect
+	if (loc->getRedirectCode() > 0) {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Redirect configured, code: " << loc->getRedirectCode()
+				  << ", target: " << loc->getRedirectTarget() << std::endl;
+#endif
+		std::string location = loc->getRedirectTarget();
+		sendRedirectResponse(loc->getRedirectCode(), location);
+		return;
+	}
+
+	// Build file path
+	std::string file_path = buildFilePath(loc, request.getPath());
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Built file path: " << file_path << std::endl;
+#endif
+
+	// Check if it's a directory
+	if (isDirectory(file_path)) {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Path is a directory, checking for index files" << std::endl;
+#endif
+		// Try index files
+		const std::vector<std::string> &index_files = loc->getIndexFiles();
+		bool found_index = false;
+
+		for (size_t i = 0; i < index_files.size(); ++i) {
+			std::string index_path = file_path + "/" + index_files[i];
+#ifdef _DEBUG
+			std::cerr << "DEBUG: Trying index file: " << index_path << std::endl;
+#endif
+			if (!isDirectory(index_path)) {
+				if (serveFile(index_path)) {
+#ifdef _DEBUG
+					std::cerr << "DEBUG: Successfully served index file: " << index_files[i] << std::endl;
+#endif
+					found_index = true;
+					break;
+				}
+			}
+		}
+
+		// If no index file found, try autoindex
+		if (!found_index) {
+			if (loc->getAutoindex()) {
+#ifdef _DEBUG
+				std::cerr << "DEBUG: No index file found, generating directory listing" << std::endl;
+#endif
+				sendDirectoryListing(file_path, request.getPath());
+			} else {
+#ifdef _DEBUG
+				std::cerr << "DEBUG: No index file found and autoindex disabled" << std::endl;
+#endif
+				sendErrorResponse(403);  // Forbidden
+			}
+		}
+		return;
+	}
+
+	// Regular file serving
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Attempting to serve regular file: " << file_path << std::endl;
+#endif
+	if (!serveFile(file_path)) {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Failed to serve file: " << file_path << std::endl;
+#endif
+		sendErrorResponse(404);
+	} else {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Successfully served file: " << file_path << std::endl;
+#endif
+	}
+}
+
+void Connection::handlePostRequest(const HttpRequest& request, const LocationConfig* loc)
+{
+#ifdef _DEBUG
+	std::cerr << "DEBUG: === HANDLING POST REQUEST ===" << std::endl;
+	std::cerr << "DEBUG: Path: " << request.getPath() << std::endl;
+	std::cerr << "DEBUG: Body length: " << request.getBody().length() << " bytes" << std::endl;
+	std::cerr << "DEBUG: Content-Type: " << request.getHeader("content-type") << std::endl;
+#endif
+
+	// Handle file upload
+	if (loc->getUploadEnabled()) {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Upload is enabled for this location" << std::endl;
+#endif
+		handleFileUpload(request, loc);
+		return;
+	}
+
+	// Check for CGI
+	std::string extension = getFileExtension(request.getPath());
+	if (!extension.empty()) {
+		std::string cgi_program = loc->getCgi(extension);
+		if (!cgi_program.empty()) {
+#ifdef _DEBUG
+			std::cerr << "DEBUG: CGI handler found for extension " << extension
+					  << ": " << cgi_program << std::endl;
+#endif
+			handleCgiRequest(request, loc, cgi_program);
+			return;
+		}
+	}
+
+	// Default POST response
+#ifdef _DEBUG
+	std::cerr << "DEBUG: No special POST handling, sending default response" << std::endl;
+#endif
+	std::string response_body = "POST request processed successfully";
+	sendSimpleResponse(200, "text/plain", response_body);
+}
+
+void Connection::handleDeleteRequest(const HttpRequest& request, const LocationConfig* loc)
+{
+#ifdef _DEBUG
+	std::cerr << "DEBUG: === HANDLING DELETE REQUEST ===" << std::endl;
+	std::cerr << "DEBUG: Path: " << request.getPath() << std::endl;
+#endif
+
+	// Build file path
+	std::string file_path = buildFilePath(loc, request.getPath());
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Target file: " << file_path << std::endl;
+#endif
+
+	// Check if file exists
+	struct stat st;
+	if (stat(file_path.c_str(), &st) != 0) {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: File does not exist: " << file_path << std::endl;
+#endif
+		sendErrorResponse(404);
+		return;
+	}
+
+	// Don't allow deleting directories
+	if (S_ISDIR(st.st_mode)) {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Cannot delete directory: " << file_path << std::endl;
+#endif
+		sendErrorResponse(403);
+		return;
+	}
+
+	// Attempt to delete
+	if (unlink(file_path.c_str()) == 0) {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Successfully deleted file: " << file_path << std::endl;
+#endif
+		sendSimpleResponse(200, "text/plain", "File deleted successfully");
+	} else {
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Failed to delete file (permission denied): " << file_path << std::endl;
+#endif
+		sendErrorResponse(403);  // Forbidden (permission denied)
+	}
+}
+
+// Helper methods
+
+void Connection::sendSimpleResponse(int code, const std::string& content_type, const std::string& body)
+{
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Sending simple response - Code: " << code
+			  << ", Content-Type: " << content_type
+			  << ", Body length: " << body.length() << std::endl;
+#endif
+
+	std::ostringstream oss;
+	oss << body.length();
+
+	std::string response =
+		"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
+		"Content-Type: " + content_type + "\r\n"
+		"Content-Length: " + oss.str() + "\r\n"
+		"Connection: close\r\n"
+		"\r\n" + body;
+
+	queueWrite(response);
+	requestClose();
+}
+
+void Connection::sendRedirectResponse(int code, const std::string& location)
+{
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Sending redirect response - Code: " << code
+			  << ", Location: " << location << std::endl;
+#endif
+
+	std::string response =
+		"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
+		"Location: " + location + "\r\n"
+		"Content-Length: 0\r\n"
+		"Connection: close\r\n\r\n";
+
+	queueWrite(response);
+	requestClose();
+}
+
+void Connection::sendDirectoryListing(const std::string& dir_path, const std::string& uri)
+{
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Generating directory listing for: " << dir_path << std::endl;
+#endif
+
+	Response response = Response::createDirectoryListing(dir_path, uri);
+	queueWrite(response.serialize());
+	requestClose();
+}
+
+void Connection::handleFileUpload(const HttpRequest& request, const LocationConfig* loc)
+{
+#ifdef _DEBUG
+    std::cerr << "DEBUG: Handling file upload, upload path: " << loc->getUploadPath() << std::endl;
+    std::cerr << "DEBUG: Upload body size: " << request.getBody().length() << " bytes" << std::endl;
+    std::cerr << "DEBUG: Upload content-type: " << request.getHeader("content-type") << std::endl;
+#endif
+
+    std::string upload_path = loc->getUploadPath();
+    if (upload_path.empty()) {
+#ifdef _DEBUG
+        std::cerr << "DEBUG: Upload path is empty" << std::endl;
+#endif
+        sendErrorResponse(500);
+        return;
+    }
+
+    // Build response with upload info
+    std::ostringstream response_body;
+    response_body << "File upload received successfully!\n";
+    response_body << "Content-Type: " << request.getHeader("content-type") << "\n";
+    response_body << "Body size: " << request.getBody().length() << " bytes\n";
+    response_body << "Upload path: " << upload_path << "\n";
+
+    sendSimpleResponse(200, "text/plain", response_body.str());
+}
+
+void Connection::handleCgiRequest(const HttpRequest& request, const LocationConfig* loc, const std::string& cgi_program)
+{
+#ifdef _DEBUG
+	std::cerr << "DEBUG: CGI request detected but not implemented yet" << std::endl;
+	std::cerr << "DEBUG: CGI program: " << cgi_program << std::endl;
+	std::cerr << "DEBUG: Request path: " << request.getPath() << std::endl;
+#endif
+
+	(void)request;
+	(void)loc;
+	(void)cgi_program;
+	sendSimpleResponse(501, "text/plain", "CGI not implemented yet - perfect place for CgiHandler!");
+}
+
+std::string Connection::buildFilePath(const LocationConfig *loc, const std::string &target)
+{
+	std::string file_path = loc->getRoot();
+
+	// Handle root path "/"
+	if (target == "/") {
+		const std::vector<std::string> &index_files = loc->getIndexFiles();
+		if (!index_files.empty()) {
+			file_path += "/" + index_files[0];  // Use first index file
+		} else {
+			file_path += "/index.html";  // Default fallback
+		}
+	} else {
+		// Remove leading slash if root doesn't end with one
+		if (file_path.back() != '/' && target.front() == '/') {
+			file_path += target;
+		} else if (file_path.back() == '/' && target.front() == '/') {
+			file_path += target.substr(1);  // Remove duplicate slash
+		} else {
+			file_path += "/" + target;
+		}
+	}
+
+	return file_path;
+}
+
+bool Connection::serveFile(const std::string &file_path)
+{
+	std::ifstream file(file_path.c_str(), std::ios::binary);
+	if (!file.is_open()) {
+		return false;
+	}
+
+	// Read file content
+	std::string content((std::istreambuf_iterator<char>(file)),
+						std::istreambuf_iterator<char>());
+	file.close();
+
+	// Determine content type
+	std::string content_type = getContentType(file_path);
+
+	// Build and send response
+	std::ostringstream oss;
+	oss << content.length();
+	std::string response =
+		"HTTP/1.1 200 OK\r\n"
+		"Content-Type: " + content_type + "\r\n"
+		"Content-Length: " + oss.str() + "\r\n"
+		"Connection: close\r\n"
+		"\r\n" + content;
+
+	queueWrite(response);
+	requestClose();
+	return true;
+}
+
+void Connection::sendErrorResponse(int code)
+{
+#ifdef _DEBUG
+    std::cerr << "DEBUG: Sending error response: " << code << " " << getReasonPhrase(code) << std::endl;
+#endif
+
+	const std::string& error_page = _server->getErrorPage(code);
+	std::ifstream file(error_page.c_str());
+	if (file) {
+		std::stringstream buffer;
+		buffer << file.rdbuf();
+		std::string body = buffer.str();
+		std::string response =
+			"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
+			"Content-Type: text/html\r\n"
+			"Content-Length: " + intToString(body.size()) + "\r\n"
+			"Connection: close\r\n\r\n" +
+			body;
+		queueWrite(response);
+		requestClose();
+		return;
+	}
+
+	std::string error_response =
+		"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
+		"Content-Length: 0\r\n"
+		"Connection: close\r\n\r\n";
+	queueWrite(error_response);
+	requestClose();
+}
+
+std::string Connection::getContentType(const std::string &file_path) const
+{
+	if (file_path.find(".html") != std::string::npos ||
+		file_path.find(".htm") != std::string::npos) {
+		return "text/html";
+	} else if (file_path.find(".css") != std::string::npos) {
+		return "text/css";
+	} else if (file_path.find(".js") != std::string::npos) {
+		return "application/javascript";
+	} else if (file_path.find(".png") != std::string::npos) {
+		return "image/png";
+	} else if (file_path.find(".jpg") != std::string::npos ||
+			   file_path.find(".jpeg") != std::string::npos) {
+		return "image/jpeg";
+	}
+	return "text/plain";
+}
+
+std::string Connection::getFileExtension(const std::string& path) const
+{
+	size_t dot_pos = path.find_last_of('.');
+	if (dot_pos != std::string::npos && dot_pos < path.length() - 1) {
+		return path.substr(dot_pos);
+	}
+	return "";
+}
+
+std::string Connection::getReasonPhrase(int code) const
+{
+	switch (code) {
+		case 200: return "OK";
+		case 301: return "Moved Permanently";
+		case 302: return "Found";
+		case 400: return "Bad Request";
+		case 403: return "Forbidden";
+		case 404: return "Not Found";
+		case 405: return "Method Not Allowed";
+		case 413: return "Payload Too Large";
+		case 500: return "Internal Server Error";
+		case 501: return "Not Implemented";
+		default: return "Unknown";
+	}
+}
+
+std::string Connection::intToString(int value) const
+{
+	std::ostringstream oss;
+	oss << value;
+	return oss.str();
 }
 
 void	Connection::onWritable(int fd)
@@ -1045,96 +758,4 @@ void	Connection::onTick(int fd)
 			_fd = -1;
 		}
 	}
-}
-
-std::string Connection::buildFilePath(const LocationConfig *loc, const std::string &target)
-{
-    std::string file_path = loc->getRoot();
-
-    // Handle root path "/"
-    if (target == "/") {
-        const std::vector<std::string> &index_files = loc->getIndexFiles();
-        if (!index_files.empty()) {
-            file_path += "/" + index_files[0];  // Use first index file
-        } else {
-            file_path += "/index.html";  // Default fallback
-        }
-    } else {
-        // Remove leading slash if root doesn't end with one
-        if (file_path.back() != '/' && target.front() == '/') {
-            file_path += target;
-        } else if (file_path.back() == '/' && target.front() == '/') {
-            file_path += target.substr(1);  // Remove duplicate slash
-        } else {
-            file_path += "/" + target;
-        }
-    }
-
-    return file_path;
-}
-
-bool Connection::serveFile(const std::string &file_path)
-{
-    std::ifstream file(file_path.c_str(), std::ios::binary);
-    if (!file.is_open()) {
-        return false;
-    }
-
-    // Read file content
-    std::string content((std::istreambuf_iterator<char>(file)),
-                        std::istreambuf_iterator<char>());
-    file.close();
-
-    // Determine content type
-    std::string content_type = getContentType(file_path);
-
-    // Build and send response
-    std::ostringstream oss;
-    oss << content.length();
-    std::string response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: " + content_type + "\r\n"
-        "Content-Length: " + oss.str() + "\r\n"
-        "Connection: close\r\n"
-        "\r\n" + content;
-
-    queueWrite(response);
-    requestClose();
-    return true;
-}
-
-void Connection::sendErrorResponse(int code)
-{
-    std::string error_response =
-        "HTTP/1.1 " + intToString(code) + " Not Found\r\n"
-        "Content-Length: 0\r\n"
-        "Connection: close\r\n\r\n";
-    queueWrite(error_response);
-    requestClose();
-}
-
-std::string Connection::getContentType(const std::string &file_path) const
-{
-    // Simple content type detection
-    if (file_path.find(".html") != std::string::npos ||
-        file_path.find(".htm") != std::string::npos) {
-        return "text/html";
-    } else if (file_path.find(".css") != std::string::npos) {
-        return "text/css";
-    } else if (file_path.find(".js") != std::string::npos) {
-        return "application/javascript";
-    } else if (file_path.find(".png") != std::string::npos) {
-        return "image/png";
-    } else if (file_path.find(".jpg") != std::string::npos ||
-               file_path.find(".jpeg") != std::string::npos) {
-        return "image/jpeg";
-    }
-    return "text/plain";
-}
-
-std::string Connection::intToString(int value) const
-{
-    std::ostringstream oss;
-    oss << value;
-    return oss.str();
 }
