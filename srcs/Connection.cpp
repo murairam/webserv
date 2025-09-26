@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/26 11:53:07 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/26 14:44:15 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -218,18 +218,26 @@ void Connection::handleParsedRequest(const HttpRequest& request)
 	// Set method for compatibility with existing code
 	_method = MethodTokenToMask(request.getMethod());
 
-	// Find matching location for all methods
+#ifdef _DEBUG
+std::cerr << "DEBUG: Looking for location match for: " << request.getPath() << std::endl;
+std::cerr << "DEBUG: About to call matchLocation..." << std::endl;
+#endif
+
 	const LocationConfig *loc = _server->matchLocation(request.getPath());
+
+#ifdef _DEBUG
+std::cerr << "DEBUG: matchLocation returned" << std::endl;
+#endif
 	if (!loc) {
 #ifdef _DEBUG
-		std::cerr << "DEBUG: No matching location found for " << request.getPath() << std::endl;
+    std::cerr << "DEBUG: No matching location found for " << request.getPath() << std::endl;
 #endif
 		sendErrorResponse(404);
 		return;
 	}
 
 #ifdef _DEBUG
-	std::cerr << "DEBUG: Found location match, prefix: " << loc->getPathPrefix() << std::endl;
+std::cerr << "DEBUG: Found location match, prefix: " << loc->getPathPrefix() << std::endl;
 #endif
 
 	// Check if method is allowed
@@ -293,6 +301,19 @@ void Connection::handleGetRequest(const HttpRequest& request, const LocationConf
 		std::string location = loc->getRedirectTarget();
 		sendRedirectResponse(loc->getRedirectCode(), location);
 		return;
+	}
+	// Check for CGI first
+	std::string extension = getFileExtension(request.getPath());
+	if (!extension.empty()) {
+		std::string cgi_program = loc->getCgi(extension);
+		if (!cgi_program.empty()) {
+#ifdef _DEBUG
+        std::cerr << "DEBUG: CGI handler found for extension " << extension
+                  << ": " << cgi_program << std::endl;
+#endif
+        handleCgiRequest(request, loc, cgi_program);
+        return;  // Important: return after CGI handling
+	    }
 	}
 
 	// Build file path

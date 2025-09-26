@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:19 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/23 12:21:19 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/26 14:46:26 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,32 +58,32 @@ const std::vector<LocationConfig>	&ServerConfig::getLocations(void) const
 
 /*	Longest prefix matach
 */
-const LocationConfig	*ServerConfig::matchLocation(const std::string &path) const
+const LocationConfig *ServerConfig::matchLocation(const std::string &path) const
 {
-	if (path.empty())
-		return (0);
+    if (path.empty())
+        return (0);
 
-	size_t					best_len = 0;
-	size_t					i = 0;
-	const LocationConfig	*best = 0;
-	while (i < _locations.size())
-	{
-		const std::string	&prefix = _locations[i].getPathPrefix();
-		const size_t		plen = prefix.size();
+    size_t best_len = 0;
+    const LocationConfig *best = 0;
+    
+    for (size_t i = 0; i < _locations.size(); ++i)
+    {
+        const std::string &prefix = _locations[i].getPathPrefix();
+        const size_t plen = prefix.size();
 
-		if (!plen || plen > path.size())
-			continue;
-		if (!path.compare(0, plen, prefix))
-		{
-			if (plen > best_len)
-			{
-				best = &_locations[i];
-				best_len = plen;
-			}
-		}
-		i++;
-	}
-	return (best);
+        if (plen == 0 || plen > path.size())
+            continue;  // Safe to continue in for-loop
+            
+        if (!path.compare(0, plen, prefix))
+        {
+            if (plen > best_len)
+            {
+                best = &_locations[i];
+                best_len = plen;
+            }
+        }
+    }
+    return (best);
 }
 
 long	ServerConfig::getBodyLimit(const LocationConfig *loc) const
