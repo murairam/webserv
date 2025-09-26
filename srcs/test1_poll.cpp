@@ -40,13 +40,13 @@ bool RequestParser::parse(std::istream &in, std::string &out_payload)
 	return true;
 }
 
-// ===== Connection =====
+// ===== TestPollConnection =====
 
-Connection::Connection() : _fd(-1), _want_close(false) {}
-Connection::Connection(int fd) : _fd(fd), _want_close(false) {}
-Connection::Connection(const Connection &o)
+TestPollConnection::TestPollConnection() : _fd(-1), _want_close(false) {}
+TestPollConnection::TestPollConnection(int fd) : _fd(fd), _want_close(false) {}
+TestPollConnection::TestPollConnection(const TestPollConnection &o)
 : _fd(o._fd), _in_buf(o._in_buf), _out_buf(o._out_buf), _want_close(o._want_close) {}
-Connection &Connection::operator=(const Connection &o)
+TestPollConnection &TestPollConnection::operator=(const TestPollConnection &o)
 {
 	if (this != &o)
 	{
@@ -57,13 +57,13 @@ Connection &Connection::operator=(const Connection &o)
 	}
 	return *this;
 }
-Connection::~Connection() {}
+TestPollConnection::~TestPollConnection() {}
 
-int Connection::getFd() const { return _fd; }
-std::string &Connection::inBuf() { return _in_buf; }
-std::string &Connection::outBuf() { return _out_buf; }
-bool Connection::wantClose() const { return _want_close; }
-void Connection::setWantClose(bool v) { _want_close = v; }
+int TestPollConnection::getFd() const { return _fd; }
+std::string &TestPollConnection::inBuf() { return _in_buf; }
+std::string &TestPollConnection::outBuf() { return _out_buf; }
+bool TestPollConnection::wantClose() const { return _want_close; }
+void TestPollConnection::setWantClose(bool v) { _want_close = v; }
 
 // ===== PollReactor =====
 
@@ -90,7 +90,7 @@ PollReactor::~PollReactor() {}
 void PollReactor::addClient(int fd)
 {
 	set_nonblocking(fd);
-	_conns.insert(std::make_pair(fd, Connection(fd)));
+	_conns.insert(std::make_pair(fd, TestPollConnection(fd)));
 }
 
 void PollReactor::rebuildPollfds()
@@ -106,7 +106,7 @@ void PollReactor::rebuildPollfds()
 		_pfds.push_back(p);
 	}
 
-	std::map<int, Connection>::iterator it = _conns.begin();
+	std::map<int, TestPollConnection>::iterator it = _conns.begin();
 	while (it != _conns.end())
 	{
 		struct pollfd p;
@@ -132,7 +132,7 @@ void PollReactor::handleAccept()
 	}
 }
 
-void PollReactor::handleRead(Connection &c)
+void PollReactor::handleRead(TestPollConnection &c)
 {
 	char tmp[4096];
 	int n = recv(c.getFd(), tmp, 4096, 0);
@@ -150,7 +150,7 @@ void PollReactor::handleRead(Connection &c)
 	c.setWantClose(true);
 }
 
-void PollReactor::handleMaybeParse(Connection &c)
+void PollReactor::handleMaybeParse(TestPollConnection &c)
 {
 	// Detect a complete HTTP request in _in_buf.
 	// Minimal demo: headers end at \r\n\r\n, and either no body,
@@ -171,7 +171,7 @@ void PollReactor::handleMaybeParse(Connection &c)
 	}
 }
 
-void PollReactor::handleWrite(Connection &c)
+void PollReactor::handleWrite(TestPollConnection &c)
 {
 	if (c.outBuf().empty()) return;
 
@@ -188,7 +188,7 @@ void PollReactor::handleWrite(Connection &c)
 
 void PollReactor::drop(int fd)
 {
-	std::map<int, Connection>::iterator it = _conns.find(fd);
+	std::map<int, TestPollConnection>::iterator it = _conns.find(fd);
 	if (it != _conns.end())
 	{
 		close(fd);
@@ -217,14 +217,14 @@ void PollReactor::runOnce(int timeout_ms)
 			continue;
 		}
 
-		std::map<int, Connection>::iterator it = _conns.find(p.fd);
+		std::map<int, TestPollConnection>::iterator it = _conns.find(p.fd);
 		if (it == _conns.end())
 		{
 			++i;
 			continue;
 		}
 
-		Connection &c = it->second;
+		TestPollConnection &c = it->second;
 
 		if (p.revents & POLLIN) handleRead(c);
 

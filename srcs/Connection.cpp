@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/25 12:14:08 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/26 11:53:07 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -552,9 +552,9 @@ std::string Connection::buildFilePath(const LocationConfig *loc, const std::stri
 		}
 	} else {
 		// Remove leading slash if root doesn't end with one
-		if (file_path.back() != '/' && target.front() == '/') {
+		if (file_path.size() > 0 && file_path[file_path.size() - 1] != '/' && target.size() > 0 && target[0] == '/') {
 			file_path += target;
-		} else if (file_path.back() == '/' && target.front() == '/') {
+		} else if (file_path.size() > 0 && file_path[file_path.size() - 1] == '/' && target.size() > 0 && target[0] == '/') {
 			file_path += target.substr(1);  // Remove duplicate slash
 		} else {
 			file_path += "/" + target;

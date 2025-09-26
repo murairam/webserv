@@ -23,7 +23,7 @@ public:
 	bool parse(std::istream &in, std::string &out_payload);
 };
 
-class Connection
+class TestPollConnection
 {
 private:
 	int         _fd;            // socket file descriptor for this client
@@ -32,11 +32,11 @@ private:
 	bool        _want_close;    // mark connection to be closed after flush
 
 public:
-	Connection();
-	Connection(int fd);
-	Connection(const Connection &other);
-	Connection &operator=(const Connection &other);
-	~Connection();
+	TestPollConnection();
+	TestPollConnection(int fd);
+	TestPollConnection(const TestPollConnection &other);
+	TestPollConnection &operator=(const TestPollConnection &other);
+	~TestPollConnection();
 
 	int         getFd() const;
 	std::string &inBuf();
@@ -49,16 +49,16 @@ class PollReactor
 {
 private:
 	int                          _listen_fd;   // listening socket fd
-	std::map<int, Connection>    _conns;       // map: fd -> connection state
+	std::map<int, TestPollConnection>    _conns;       // map: fd -> connection state
 	std::vector<struct pollfd>   _pfds;        // poll() watched fds
 	RequestParser                _parser;      // request parser instance
 
 private:
 	void rebuildPollfds();                     // rebuild _pfds from _conns
 	void handleAccept();                       // accept new client(s)
-	void handleRead(Connection &c);            // read from client into _in_buf
-	void handleMaybeParse(Connection &c);      // if a full request is ready, parse it
-	void handleWrite(Connection &c);           // flush _out_buf to socket
+	void handleRead(TestPollConnection &c);            // read from client into _in_buf
+	void handleMaybeParse(TestPollConnection &c);      // if a full request is ready, parse it
+	void handleWrite(TestPollConnection &c);           // flush _out_buf to socket
 	void drop(int fd);                         // close and erase connection
 
 public:
