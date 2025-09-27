@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/20 14:58:10 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/24 04:06:59 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 23:06:42 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,32 +29,16 @@ void	SignalHandler::_handler(int sig)
 bool	SignalHandler::_hook_all(void)
 {
 	size_t	i = 0;
-	while (i < _signal_handle.size())
+	while (i < _signals.size())
 	{
 #ifdef	USE_SIGACTION
 		struct sigaction	sa;
 		sa.sa_flags = SA_SIGINFO | SA_RESTART;
 		sa.sa_handler = &SignalHandler::_handler;
-		if (::sigemptyset(&sa.sa_mask) || ::sigaction(_signal_handle[i], &sa, 0))
+		if (::sigemptyset(&sa.sa_mask) || ::sigaction(_signals[i], &sa, 0))
 			return (false);
 #else
-		if (::signal(_signal_handle[i], &SignalHandler::_handler) == SIG_ERR)
-			return (false);
-#endif
-		i++;
-	}
-
-	i = 0;
-	while (i < _signal_ignore.size())
-	{
-#ifdef	USE_SIGACTION
-		struct sigaction	sb;
-		sb.sa_flags = SA_SIGINFO | SA_RESTART;
-		sb.sa_handler = &SignalHandler::_handler;
-		if (::sigemptyset(&sb.sa_mask) || ::sigaction(_signal_ignore[i], &sb, 0))
-			return (false);
-#else
-		if (::signal(_signal_ignore[i], SIG_IGN) == SIG_ERR)
+		if (::signal(_signals[i], &SignalHandler::_handler) == SIG_ERR)
 			return (false);
 #endif
 		i++;
@@ -65,27 +49,16 @@ bool	SignalHandler::_hook_all(void)
 void	SignalHandler::_unhook_all(void)
 {
 	size_t	i = 0;
-	while (i < _signal_handle.size())
+	while (i < _signals.size())
 	{
 #ifdef	USE_SIGACTION
 		struct sigaction	sa;
 		sa.sa_flags = 0;
 		sa.sa_handler = SIG_DFL;
 		(void)::sigemptyset(&sa.sa_mask);
-		(void)::sigaction(_signal_handle[i], &sa, 0);
+		(void)::sigaction(_signals[i], &sa, 0);
 #else
-		(void)::signal(_signal_handle[i], SIG_DFL);
-#endif
-		i++;
-	}
-
-	i = 0;
-	while (i < _signal_ignore.size())
-	{
-#ifdef	USE_SIGACTION
-		(void)::sigaction(_signal_ignore[i], &sa, 0);
-#else
-		(void)::signal(_signal_ignore[i], SIG_DFL);
+		(void)::signal(_signals[i], SIG_DFL);
 #endif
 		i++;
 	}
@@ -111,7 +84,7 @@ bool	SignalHandler::_install_handlers(void)
 }
 
 SignalHandler::SignalHandler(void)
-:_signal_handle(), _signal_ignore(), _installed(false) {}
+:_signals(), _installed(false) {}
 
 SignalHandler::~SignalHandler(void)
 {
@@ -119,8 +92,7 @@ SignalHandler::~SignalHandler(void)
 }
 
 SignalHandler::SignalHandler(const SignalHandler &other)
-:_signal_handle(other._signal_handle),
-_signal_ignore(other._signal_ignore), _installed(false) {}
+:_signals(other._signals), _installed(false) {}
 
 SignalHandler	&SignalHandler::operator=(const SignalHandler &other)
 {
@@ -128,25 +100,17 @@ SignalHandler	&SignalHandler::operator=(const SignalHandler &other)
 	{
 		if (_installed)
 			uninstall();
-		_signal_handle = other._signal_handle;
-		_signal_ignore = other._signal_ignore;
+		_signals = other._signals;
 		_installed = false;
 	}
 	return (*this);
 }
 
-void	SignalHandler::addSignalHandle(int sig)
+void	SignalHandler::addSignal(int sig)
 {
 	if (_installed)
 		return ;
-	_signal_handle.push_back(sig);
-}
-
-void	SignalHandler::addSignalIgnore(int sig)
-{
-	if (_installed)
-		return ;
-	_signal_ignore.push_back(sig);
+	_signals.push_back(sig);
 }
 
 bool	SignalHandler::install(void)

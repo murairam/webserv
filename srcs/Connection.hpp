@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:08:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/24 21:40:09 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/25 11:54:01 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,10 +16,8 @@
 # include "IFdHandler.hpp"
 # include "_headers.hpp"
 # include "ServerConfig.hpp"
-# include "Response.hpp"
-# include "CodePage.hpp"
-# include "utility.hpp"
-# include "LocationConfig.hpp"
+# include "HttpRequest.hpp"
+# include "HttpRequestParser.hpp"
 
 class	EventLoop;
 
@@ -31,53 +29,41 @@ class	EventLoop;
 class	Connection: public IFdHandler
 {
 	private:
-		struct Request
-		{
-			std::string	_target;
-			bool		_target_set;
-			std::string	_query;
-			bool		_query_set;
-			std::string	_host;
-			bool		_host_set;
-			int			_port;
-			bool		_port_set;
-			std::map<std::string,std::string>	_auth;
-			bool		_auth_set;
-			std::map<std::string,std::string>	_cookie;
-			bool		_cookie_set;
-			bool		_should_reject;
-			bool		_persistent;
-			bool		_chunked;
-			long		_body_length;
-			bool		_body_length_set;
-			int			_err_code;
-			bool		_err_code_set;
-			std::string	_body;
-			bool		_body_set;
-			bool		_job_done;
-		};
-
 		int			_fd;
 		EventLoop	*_loop;
 		const std::string	&_server_name;
-		std::string	_inbuf;
+		std::string	_inbuf;              // Make sure this exists
 		std::string	_outbuf;
 		bool		_engaged;
-		bool		_should_close;
+		bool		_should_close;       // Make sure this exists
 		const ServerConfig	*_server;
 		int			_method;
-		Request		r;
-		std::string	_header;
-		std::string	_body;
 
-		void	parseGET(void);
-		void	parsePOST(void);
-		void	parseDELETE(void);
-		void	requestProccess(void);
-		void	resetRequest(void);
+		// NEW PARSER INTEGRATION
+		void        dispatcher(void);    // Make sure this is declared
+		bool        handleRequestWithNewParser(void);  // Make sure this is declared
+		void        handleParsedRequest(const HttpRequest& request);
 
-		void	sendErrPage(int code);
-		void	sendResponse(Response &r);
+		// METHOD-SPECIFIC HANDLERS
+		void        handleGetRequest(const HttpRequest& request, const LocationConfig* loc);
+		void        handlePostRequest(const HttpRequest& request, const LocationConfig* loc);
+		void        handleDeleteRequest(const HttpRequest& request, const LocationConfig* loc);
+
+		// HELPER METHODS
+		std::string buildFilePath(const LocationConfig *loc, const std::string &target);
+		bool        serveFile(const std::string &file_path);
+		void        sendErrorResponse(int code);
+		void        sendSimpleResponse(int code, const std::string& content_type, const std::string& body);
+		void        sendRedirectResponse(int code, const std::string& location);
+		void        sendDirectoryListing(const std::string& dir_path, const std::string& uri);
+		void        handleFileUpload(const HttpRequest& request, const LocationConfig* loc);
+		void        handleCgiRequest(const HttpRequest& request, const LocationConfig* loc, const std::string& cgi_program);
+
+		// UTILITY METHODS
+		std::string getContentType(const std::string &file_path) const;
+		std::string getFileExtension(const std::string& path) const;
+		std::string getReasonPhrase(int code) const;
+		std::string intToString(int value) const;
 
 		Connection(void);
 		Connection(const Connection &other);
@@ -101,8 +87,7 @@ class	Connection: public IFdHandler
 		const std::string	&getServerName(void) const;
 		bool	isEngaged(void) const;
 		bool	isClose(void) const;
-		std::string	response(void);
-		
+
 		virtual void	onReadable(int fd);
 		virtual void	onWritable(int fd);
 		virtual void	onError(int fd);

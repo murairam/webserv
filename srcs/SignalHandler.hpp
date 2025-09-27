@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/20 14:25:29 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/24 03:57:54 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/20 23:07:23 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,8 +27,7 @@ class	SignalHandler
 		static volatile sig_atomic_t	_shutdown_flag;
 		static int						_pipefd[2];
 
-		std::vector<int>				_signal_handle;
-		std::vector<int>				_signal_ignore;
+		std::vector<int>				_signals;
 		bool							_installed;
 		static void						_handler(int sig);
 		bool							_hook_all(void);
@@ -40,8 +39,7 @@ class	SignalHandler
 		SignalHandler(const SignalHandler &other);
 		SignalHandler	&operator=(const SignalHandler &other);
 
-		void	addSignalHandle(int sig);
-		void	addSignalIgnore(int sig);
+		void	addSignal(int sig);
 		bool	install(void);
 		void	uninstall(void);
 		bool	isInstalled(void) const;

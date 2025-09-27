@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 11:41:03 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 20:36:57 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/18 21:18:38 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,9 +23,7 @@ enum methods_bitmask
 	OPTIONS_MASK	= (1 << 3),
 	PUT_MASK		= (1 << 4),
 	CONNECT_MASK	= (1 << 5),
-	HEAD_MASK		= (1 << 6),
-	TRACE_MASK		= (1 << 7),
-	PATCH_MASK		= (1 << 8)
+	HEAD_MASK		= (1 << 6)
 };
 # endif /* METHODS_BITMASK */
 
@@ -69,7 +67,7 @@ enum event_bitmask
 #  define ERROR_MSG
 #  define ERROR_MSG_INVALID_ENVP "WHAT'S WRONG WITH YOU ? PLAYING THAT ENV -I TRICK WITH YOUR DADDY ?"
 # endif /* ERROR_MSG */
-/*
+
 # ifndef ERROR_PAGE
 #  define ERROR_PAGE
 #  define ERROR_PAGE_400 "assets/error_pages/400.html"
@@ -82,6 +80,6 @@ enum event_bitmask
 #  define ERROR_PAGE_502 "assets/error_pages/502.html"
 #  define ERROR_PAGE_503 "assets/error_pages/503.html"
 #  define ERROR_PAGE_504 "assets/error_pages/504.html"
-# endif  ERROR_PAGE 
-*/
+# endif /* ERROR_PAGE */
+
 #endif /* MSG_HPP */

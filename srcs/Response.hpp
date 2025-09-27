@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 01:25:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/24 21:15:50 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/21 14:49:57 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,7 +48,7 @@ class	Response
 		void		debug(void) const;
 #endif
 
-		static Response	createErrorResponse(int code, const std::string &error_page_path = std::string());
+		static Response	createErrorResponse(int code, const std::string &error_page_path = "");
 		static Response	createFileResponse(const std::string &filepath);
 		static Response	createRedirectResponse(int code, const std::string &location);
 		static Response	createDirectoryListing(const std::string &path, const std::string &uri);

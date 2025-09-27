@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Response.cpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 01:24:56 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 14:42:37 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/22 16:16:29 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,7 @@ Response::Response(int status_code)
 
 Response::Response(const Response &other)
 :_status_code(other._status_code), _headers(other._headers),
-_body(other._body) {} 
+_body(other._body){}
 
 Response	&Response::operator=(const Response &other)
 {
@@ -202,7 +202,7 @@ std::string	Response::generateDirectoryListingHTML(const std::string &path, cons
 
 		html += "<a href=\"" + parent + "\">../</a>\n";
 	}
-	
+
 	dir.ft_opendir();
 	while (!(entry = dir.nextEntry()).empty())
 	{

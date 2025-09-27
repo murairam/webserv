@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:11:14 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 23:10:13 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/27 15:34:57 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -155,7 +155,11 @@ void	Listener::onReadable(int fd)
 		client_fd = ::accept(_fd, reinterpret_cast<struct sockaddr*>(&peer), &len);
 		if (client_fd < 0)
 		{
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
+			if (errno == EAGAIN
+				#if EAGAIN != EWOULDBLOCK
+				 || errno == EWOULDBLOCK
+				#endif
+			)
 				break;
 			if (errno == EINTR)
 				continue;

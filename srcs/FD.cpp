@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   FD.cpp                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:51:23 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 13:02:27 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/23 12:23:58 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,10 @@
 
 /* FD initialized to -1 */
 FD::FD(void):_fd(-1) {}
+
 /* Acquir FD ownership */
 FD::FD(int fd):_fd(fd) {}
+
 /* dup if FD is valid */
 FD::FD(const FD &other):_fd(-1)
 {
@@ -32,7 +34,7 @@ FD::FD(const FD &other):_fd(-1)
 FD	&FD::operator=(const FD &other)
 {
 	int	new_fd;
-	
+
 	if (this != &other)
 	{
 		if (_fd > -1)
@@ -118,7 +120,7 @@ FD	FD::openRW(const std::string &path, bool create, mode_t mode)
 {
 	int	flags = O_RDWR | O_NOFOLLOW;
 	int	fd;
-	
+
 	if (create)
 		flags |= O_CREAT;
 	fd = ::open(path.c_str(), flags, mode);
@@ -132,7 +134,7 @@ void	FD::setNonBlockingFD(bool enabled)
 {
 	int	flags = ::fcntl(_fd, F_GETFL, 0);
 	int	rv;
-	
+
 	if (flags < 0)
 		throw SysError("\n---fcntl(F_GETFL) failed", errno);
 	if (enabled)

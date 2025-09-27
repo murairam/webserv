@@ -3,25 +3,27 @@
 /*                                                        :::      ::::::::   */
 /*   Socket.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 12:42:21 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 13:09:18 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/24 12:41:44 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Socket.hpp"
 
 Socket::Socket(void):_fd(-1) {}
+
 Socket::Socket(int domain, int type, int protocol):_fd(-1)
 {
 	int	fd;
-	
+
 	fd = ::socket(domain, type, protocol);
 	if (fd < 0)
 		throw SysError("\n---socket failed", errno);
 	_fd.resetFD(fd);
 }
+
 Socket::Socket(int fd, bool take_ownership):_fd(-1)
 {
 	if (take_ownership)
@@ -29,6 +31,7 @@ Socket::Socket(int fd, bool take_ownership):_fd(-1)
 }
 
 Socket::Socket(const Socket &other):_fd(other._fd) {}
+
 Socket	&Socket::operator=(const Socket &other)
 {
 	if (this != &other)
@@ -67,7 +70,7 @@ void	Socket::setReuseAddr(bool enabled) const
 {
 	int	x;
 	int	rv;
-	
+
 	if (enabled)
 		x = 1;
 	else
@@ -151,5 +154,5 @@ ssize_t	Socket::recvIO(void *buf, size_t len, int flags) const
 			return (0);
 		throw SysError("\n---Unable to receive via socket", errno);
 	}
-	return (0);
+	return (n);
 }

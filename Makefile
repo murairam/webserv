@@ -6,7 +6,7 @@
 #    By: yanli <yanli@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/09/24 22:22:39 by yanli            ###   ########.fr        #
+#    Updated: 2025/09/27 15:47:05 by yanli            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -24,7 +24,8 @@ SRCS_FILES		= main.cpp Endpoint.cpp LocationConfig.cpp ServerConfig.cpp \
 				CodePage.cpp timestring.cpp EventLoop.cpp \
 				IFdHandler.cpp Listener.cpp ListenerRegistry.cpp \
 				Connection.cpp ConnectionManager.cpp \
-				Response.cpp SignalHandler.cpp SignalFDHandler.cpp
+				Response.cpp SignalHandler.cpp SignalFDHandler.cpp \
+				HttpRequest.cpp HttpRequestParser.cpp
 
 SRCS			= $(addprefix $(SRCS_DIR)/,$(SRCS_FILES))
 
