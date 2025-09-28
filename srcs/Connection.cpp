@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/27 16:02:17 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/27 16:48:51 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -201,7 +201,10 @@ bool Connection::handleRequestWithNewParser(void)
 			std::cerr << "DEBUG: Body length: " << request.getBody().length() << " bytes" << std::endl;
 		std::cerr << "DEBUG: Headers count: " << request.toCgiEnvironment().size() << std::endl;
 #endif
-
+		if (!request.getPersistent())
+			_should_close = true;
+		else
+			_should_close = false;
 		// Successful parse - handle the request
 		handleParsedRequest(request);
 		return true;  // Successfully handled
@@ -490,11 +493,10 @@ void Connection::sendSimpleResponse(int code, const std::string& content_type, c
 		"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
 		"Content-Type: " + content_type + "\r\n"
 		"Content-Length: " + oss.str() + "\r\n"
-		"Connection: close\r\n"
+		"Connection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") +
 		"\r\n" + body;
 
 	queueWrite(response);
-	requestClose();
 }
 
 void Connection::sendRedirectResponse(int code, const std::string& location)
@@ -508,10 +510,9 @@ void Connection::sendRedirectResponse(int code, const std::string& location)
 		"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
 		"Location: " + location + "\r\n"
 		"Content-Length: 0\r\n"
-		"Connection: close\r\n\r\n";
+		"Connection: " + (!_should_close ? "keep-alive\r\n\r\n" : "close\r\n\r\n");
 
 	queueWrite(response);
-	requestClose();
 }
 
 void Connection::sendDirectoryListing(const std::string& dir_path, const std::string& uri)
@@ -614,11 +615,10 @@ bool Connection::serveFile(const std::string &file_path)
 		"HTTP/1.1 200 OK\r\n"
 		"Content-Type: " + content_type + "\r\n"
 		"Content-Length: " + oss.str() + "\r\n"
-		"Connection: close\r\n"
+		"Connection: " + (!_should_close ? "keep-alive\r\n" : "close\r\n") +
 		"\r\n" + content;
 
 	queueWrite(response);
-	requestClose();
 	return true;
 }
 
@@ -641,7 +641,6 @@ void Connection::sendErrorResponse(int code)
 			"Connection: close\r\n\r\n" +
 			body;
 		queueWrite(response);
-		requestClose();
 		return;
 	}
 
@@ -707,7 +706,8 @@ std::string Connection::intToString(int value) const
 void	Connection::onWritable(int fd)
 {
 	ssize_t	n;
-	int		events = EVENT_READ;
+	int	events = EVENT_READ;
+	bool	should_drop = false;
 	(void)fd;
 
 	if (!_outbuf.empty())
@@ -718,7 +718,22 @@ void	Connection::onWritable(int fd)
 		n = ::send(_fd, _outbuf.data(), static_cast<int>(_outbuf.size()), 0);
 		if (n > 0)
 			_outbuf.erase(0, static_cast<size_t>(n));
+		else if (n < 0)
+		{
+			if (errno != EAGAIN
+#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
+				&& errno != EWOULDBLOCK
+#endif
+			)
+			{
+				this->onError(_fd);
+				_outbuf.clear();
+				should_drop = true;
+			}
+		}
 	}
+	if (should_drop)
+		return;
 	if (_loop && _engaged)
 	{
 		if (!_outbuf.empty())
