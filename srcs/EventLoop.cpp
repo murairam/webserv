@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:57:27 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 23:13:48 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/28 14:58:35 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,7 +62,7 @@ _wakeup_wr_fd(-1), _should_stop(false), _timeout(0)
 	}
 	/* If creation of self-pipe succeeded, engage the read end of this pipe */
 	if (_wakeup_rd_fd > -1)
-		this->add(_wakeup_rd_fd, EVENT_READ, 0);
+		this->add(_wakeup_rd_fd, EVENT_READ, 0, false);
 }
 
 EventLoop::EventLoop(const EventLoop &other)
@@ -148,7 +148,7 @@ EventLoop::~EventLoop(void)
 		(void)::close(_wakeup_wr_fd);
 }
 
-void	EventLoop::add(int fd, int events, IFdHandler *handler)
+void	EventLoop::add(int fd, int events, IFdHandler *handler, bool is_listener)
 {
 	Entry	e;
 
@@ -156,6 +156,7 @@ void	EventLoop::add(int fd, int events, IFdHandler *handler)
 	e._events = events;
 	e._handler = handler;
 	e._last_active = getTime();
+	e._is_listener = is_listener;
 	this->_entries[fd] = e;
 }
 
@@ -233,6 +234,11 @@ void	EventLoop::run_once(unsigned timeout)
 			const Entry	&e = it2->second;
 			if (e._fd != _wakeup_rd_fd)
 			{
+				if (e._is_listener)
+				{
+					it2++;
+					continue;
+				}
 				if (curr_time > e._last_active && _timeout < (curr_time - e._last_active))
 					to_close.push_back(e._fd);
 			}

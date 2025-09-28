@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:11:14 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/27 15:34:57 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/28 14:59:09 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -156,9 +156,9 @@ void	Listener::onReadable(int fd)
 		if (client_fd < 0)
 		{
 			if (errno == EAGAIN
-				#if EAGAIN != EWOULDBLOCK
+			#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
 				 || errno == EWOULDBLOCK
-				#endif
+			#endif
 			)
 				break;
 			if (errno == EINTR)
@@ -230,7 +230,7 @@ void	Listener::engageLoop(EventLoop &loop)
 	if (_fd < 0 || _engaged)
 		return ;
 	_loop = &loop;
-	loop.add(_fd, EVENT_READ, this);
+	loop.add(_fd, EVENT_READ, this, true);
 	_engaged = true;
 }
 
