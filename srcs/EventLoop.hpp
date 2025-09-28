@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/18 21:05:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 23:12:58 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/28 14:54:57 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,8 @@ class	EventLoop
 			int			_events;
 			IFdHandler	*_handler;
 			std::time_t	_last_active;
+			bool		_is_listener;
+
 		};
 
 		std::map<int,Entry>	_entries;
@@ -45,7 +47,7 @@ class	EventLoop
 		EventLoop	&operator=(const EventLoop &other);
 
 		/* engage a FD with a IFdHandler */
-		void	add(int fd, int events, IFdHandler *handler);
+		void	add(int fd, int events, IFdHandler *handler, bool is_listener = false);
 		/* disengage a FD */
 		void	remove(int fd);
 		/* change events for an engaged FD */
