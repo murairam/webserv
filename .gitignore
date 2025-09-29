@@ -4,6 +4,8 @@
 test
 *.pdf
 webserv
+data/www/cantarella.ovh
+data/www/cantarella.ovh/*
 # Prerequisites
 *.d
 
