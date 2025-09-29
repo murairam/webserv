@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:35:23 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/29 17:28:39 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/29 20:07:42 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -93,9 +93,16 @@ bool HttpRequestParser::parseRequestLine(std::istream &input, HttpRequest &reque
         return (false);
     }
 
-    // Parse URL into path and query
+    // Parse and sanitize inbound URL into path and query
     std::string path, query;
-    parseUrl(url, path, query);
+   if (!parseUrl(url, path, query))
+   {
+	setError(request, 400);
+	return (false);
+   }
+#ifdef	_DEBUG
+   std::cerr<<"\n---start of sanitized path---\n"<<path<<"\n---end of sanitized path---"<<std::endl;
+#endif
 
     // Set request data
     request.setMethod(method);
@@ -407,20 +414,116 @@ void HttpRequestParser::setError(HttpRequest &request, int error_code)
     request.setErrorCode(error_code);
 }
 
-void HttpRequestParser::parseUrl(const std::string &url, std::string &path, std::string &query)
+bool HttpRequestParser::parseUrl
+(const std::string &url, std::string &path, std::string &query)
 {
-    std::string::size_type query_pos = url.find('?');
+	std::string::size_type query_pos = url.find('?');
+	std::string	raw_path;
 
-    if (query_pos == std::string::npos)
-    {
-        path = url;
-        query = "";
-    }
-    else
-    {
-        path = url.substr(0, query_pos);
-        query = (query_pos + 1 < url.size()) ? url.substr(query_pos + 1) : "";
-    }
+	if (query_pos == std::string::npos)
+	{
+		raw_path = url;
+		query.clear();
+	}
+	else
+	{
+		raw_path = url.substr(0, query_pos);
+		query = (query_pos + 1 < url.size()) ? url.substr(query_pos + 1) : "";
+	}
+	if (raw_path.empty())
+		raw_path = "/";
+	if (!raw_path.empty() && raw_path[0] != '/')
+	{
+		std::string::size_type	scheme_pos = raw_path.find("://");
+		if (scheme_pos != std::string::npos)
+		{
+			std::string::size_type	path_pos = raw_path.find('/', scheme_pos + 3);
+			if (path_pos != std::string::npos)
+				raw_path = raw_path.substr(0, path_pos);
+			else
+				raw_path = "/";
+		}
+	}
+	std::string	decoded_path;
+	if (!urlDecode(raw_path, decoded_path))
+		return (false);
+	return (sanitizePath(decoded_path, path));
+}
+
+bool	HttpRequestParser::urlDecode(const std::string &encoded, std::string &decoded)
+{
+	decoded.clear();
+	decoded.reserve(encoded.size());
+	size_t	i = 0;
+	while (i < encoded.size())
+	{
+		unsigned char	c = static_cast<unsigned char>(encoded[i]);
+		if (c == '%')
+		{
+			if (i + 2 >= encoded.size())
+				return (false);
+			unsigned char	c2 = static_cast<unsigned char>(encoded[i + 1]);
+			unsigned char	c3 = static_cast<unsigned char>(encoded[i + 2]);
+			if (!std::isxdigit(c2) || !std::isxdigit(c3))
+				return (false);
+			int	value = (std::isdigit(c2) ? (c2 - '0') : (((std::toupper(c2)) - 'A' + 10) * 16));
+			value += (std::isdigit(c3) ? (c3 - '0') : (std::toupper(c3) - 'A' + 10));
+			decoded += static_cast<char>(value);
+			i += 2;
+		}
+		else
+			decoded += static_cast<char>(c);
+		i++;
+	}
+	return (true);
+}
+
+bool	HttpRequestParser::sanitizePath
+(const std::string &decoded_path, std::string &sanitized)
+{
+	if (decoded_path.empty())
+	{
+		sanitized = "/";
+		return (true);
+	}
+	if (decoded_path[0] != '/')
+		return (false);
+	std::vector<std::string>	segments;
+	size_t						i = 1;
+	while (i < decoded_path.size() + 1)
+	{
+		size_t	k = decoded_path.find('/', i);
+		if (k == std::string::npos)
+			k = decoded_path.size();
+		std::string	segment = decoded_path.substr(i, k - i);
+		if (!segment.empty() && segment.find('\0') != std::string::npos)
+			return (false);
+		if (segment.empty() || segment == ".")
+		{}
+		else if (segment == "..")
+		{
+			if (segments.empty())
+				return (false);
+			segments.pop_back();
+		}
+		else
+			segments.push_back(segment);
+		if (k == decoded_path.size())
+			break;
+		i = k + 1;
+	}
+	sanitized = "/";
+	i = 0;
+	while (i < segments.size())
+	{
+		sanitized += segments[i];
+		if (i + 1 < segments.size())
+			sanitized += '/';
+		i++;
+	}
+	if (!segments.empty() && decoded_path[decoded_path.size() - 1] == '/')
+		sanitized += '/';
+	return (true);
 }
 
 // Public utility methods

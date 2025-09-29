@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequestParser.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*                                        j        +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:31:37 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/25 11:31:39 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/29 19:56:31 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,24 +51,25 @@ private:
     static void parseTransferEncodingHeader(const std::string &value, HttpRequest &request);
 
     // Utility methods
-    static std::string extractHeaderName(const std::string &line);
-    static std::string extractHeaderValue(const std::string &line);
-    static bool isValidMethod(const std::string &method);
-    static bool isValidHttpVersion(const std::string &version);
-    static void setError(HttpRequest &request, int error_code);
+    static std::string	extractHeaderName(const std::string &line);
+    static std::string	extractHeaderValue(const std::string &line);
+    static bool	isValidMethod(const std::string &method);
+    static bool	isValidHttpVersion(const std::string &version);
+    static void	setError(HttpRequest &request, int error_code);
 
-    // URL parsing utilities
-    static void parseUrl(const std::string &url, std::string &path, std::string &query);
-    static std::string urlDecode(const std::string &encoded);
+	// URL parsing utilities
+	static bool	parseUrl(const std::string &url, std::string &path, std::string &query);
+	static bool	urlDecode(const std::string &encoded, std::string &decoded);
+	static bool	sanitizePath(const std::string &decoded_path, std::string &sanitized);
 
 public:
-    // Main parsing interface
-    static HttpRequest parse(std::istream &input);
-    static HttpRequest parse(const std::string &input);
+	// Main parsing interface
+	static HttpRequest parse(std::istream &input);
+	static HttpRequest parse(const std::string &input);
 
-    // Validation utilities (public for testing/debugging)
-    static bool isCompleteRequest(const std::string &input);
-    static bool hasValidRequestLine(const std::string &input);
+	// Validation utilities (public for testing/debugging)
+	static bool	isCompleteRequest(const std::string &input);
+	static bool	hasValidRequestLine(const std::string &input);
 };
 
 #endif
