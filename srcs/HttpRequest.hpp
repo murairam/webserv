@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:12:09 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/25 11:12:18 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/29 17:21:55 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,7 @@ private:
     long                                _content_length;
     bool                                _should_reject;
     int                                 _error_code;
+	bool								_header_set;
 
 public:
     // Orthodox Canonical Form
@@ -52,11 +53,11 @@ public:
     int                 getErrorCode(void) const;
 
     // Setters
-    void    setMethod(const std::string &method);
-    void    setPath(const std::string &path);
-    void    setQuery(const std::string &query);
-    void    setVersion(const std::string &version);
-    void    setBody(const std::string &body);
+    void    setMethod(std::string method);
+    void    setPath(std::string path);
+    void    setQuery(std::string query);
+    void    setVersion(std::string version);
+    void    setBody(std::string body);
     void    setPersistent(bool persistent);
     void    setChunked(bool chunked);
     void    setContentLength(long length);
@@ -64,8 +65,8 @@ public:
     void    setErrorCode(int code);
 
     // Header and cookie management
-    void        addHeader(const std::string &key, const std::string &value);
-    void        addCookie(const std::string &key, const std::string &value);
+    bool        addHeader(std::string key, std::string value);
+    void        addCookie(std::string key, std::string value);
     std::string getHeader(const std::string &name) const;
     std::string getCookie(const std::string &name) const;
     bool        hasHeader(const std::string &name) const;

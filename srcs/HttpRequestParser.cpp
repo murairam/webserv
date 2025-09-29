@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequestParser.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:35:23 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/25 11:35:25 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/29 17:28:39 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -128,12 +128,16 @@ bool HttpRequestParser::parseHeaders(std::istream &input, HttpRequest &request)
 
         if (name.empty())
         {
-            setError(request, 400);
-            return (false);
+			setError(request, 400);
+			return (false);
         }
 
         // Add to general headers map
-        request.addHeader(name, value);
+		if (!request.addHeader(name, value))
+		{
+			setError(request, 400);
+			return (false);
+		}
 
         // Handle special headers that need extra processing
         std::string lower_name = toLower(name);
@@ -314,6 +318,12 @@ void HttpRequestParser::parseConnectionHeader(const std::string &value, HttpRequ
         request.setPersistent(false);
     else if (conn.find("keep-alive") != std::string::npos)
         request.setPersistent(true);
+	else
+	{
+		request.setPersistent(false);
+		request.setErrorCode(400);
+		request.setShouldReject(true);
+	}
 }
 
 void HttpRequestParser::parseCookieHeader(const std::string &value, HttpRequest &request)
@@ -383,13 +393,12 @@ std::string HttpRequestParser::extractHeaderValue(const std::string &line)
 
 bool HttpRequestParser::isValidMethod(const std::string &method)
 {
-    return (method == "GET" || method == "POST" || method == "DELETE" ||
-            method == "HEAD" || method == "PUT" || method == "OPTIONS");
+    return (method == "GET" || method == "POST" || method == "DELETE");
 }
 
 bool HttpRequestParser::isValidHttpVersion(const std::string &version)
 {
-    return (version == "HTTP/1.1" || version == "HTTP/1.0");
+    return (version == "HTTP/1.1");
 }
 
 void HttpRequestParser::setError(HttpRequest &request, int error_code)
