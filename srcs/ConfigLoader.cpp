@@ -12,13 +12,12 @@
 
 #include "ConfigLoader.hpp"
 
+
 ConfigLoader::ConfigLoader(void)
 : _path(), _servers(), _use_default_server(true), _server_count(0),
 _server_index(-1), _default_server(), _curr_server(), _curr_location(),
 _curr_endpoint(), _currline(0), _fatal_error(false), _root_is_folder(false)
-{
-	setDefaultServer();
-}
+{}
 
 ConfigLoader::ConfigLoader(std::string path)
 :_path(path), _servers(), _use_default_server(true),
@@ -54,10 +53,8 @@ void	ConfigLoader::parse(std::string path)
 	if (!file)
 	{
 		err_code = errno;
-		if (setDefaultServer())
-			goto fatal_exit;
 		throw SysError("Unable to open/read config file, using default server config", errno);
-		return ;
+		goto fatal_exit ;
 	}
 	while(std::getline(file, line))
 	{
@@ -93,12 +90,12 @@ void	ConfigLoader::parse(std::string path)
 				if (inside_bracket)
 				{
 					std::cerr<<path<<":"<<_currline<<": Unclosed bracket detected; trying to set up default server"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				if (_curr_server.getServerName() == "")
 				{
 					std::cerr<<path<<":"<<_currline<<": Server must have a name; trying to set up default server"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				_servers[_server_index] = _curr_server;
 				_use_default_server = false;
@@ -109,13 +106,13 @@ void	ConfigLoader::parse(std::string path)
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
 				{
 					std::cerr<<path<<":"<<_currline<<": Server must have a name and must be terminated by a single ';'. trying up set up default server"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				temp_word.erase(temp_word.size() - 1);
 				if (temp_word.empty() || !std::isalnum(temp_word[temp_word.size() - 1]))
 				{
 					std::cerr<<path<<":"<<_currline<<": Invalid server name, it must be terminated by a letter or a digit, it also must be temrminated by a single ';'. trying to set up default server"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 #ifdef	_DEBUG
 				std::cout<<"parser: server_name: "<<temp_word<<std::endl;
@@ -125,7 +122,7 @@ void	ConfigLoader::parse(std::string path)
 			else if (keyword == "listen")
 			{
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
-					goto use_default_server;
+					goto fatal_exit;
 				temp_word.erase(temp_word.size() - 1);
 #ifdef	_DEBUG
 				std::cout<<"parser: listening on: "<<temp_word<<std::endl;
@@ -135,19 +132,19 @@ void	ConfigLoader::parse(std::string path)
 			else if (keyword == "client_max_body_size")
 			{
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
-					goto use_default_server;
+					goto fatal_exit;
 				temp_word.erase(temp_word.size() - 1);
 				if (temp_word.empty())
-					goto use_default_server;
+					goto fatal_exit;
 				char	unit;
 				unit = temp_word[temp_word.size() - 1];
 				if (unit != 'K' && unit != 'M' && unit != 'G' && unit < '0' && unit > '9')
-					goto use_default_server;
+					goto fatal_exit;
 				if (unit == 'K' || unit == 'M' || unit == 'G')
 				{
 					temp_word.erase(temp_word.size() - 1);
 					if (temp_word.empty())
-						goto use_default_server;
+						goto fatal_exit;
 					long	limit = std::strtol(temp_word.c_str(), 0, 10);
 					_curr_server.setBodySize(limit, unit);
 				}
@@ -162,9 +159,9 @@ void	ConfigLoader::parse(std::string path)
 				int			err_page_code;
 				std::string	err_page;
 				if (!(iss>>err_page_code) || err_page_code > 599 || err_page_code < 100)
-					goto use_default_server;
+					goto fatal_exit;
 				if (!(iss>>err_page))
-					goto use_default_server;
+					goto fatal_exit;
 #ifdef	_DEBUG
 				std::cout<<"parser: error_code: "<<err_page_code<<", err_page: "<<err_page<<std::endl;
 #endif
@@ -178,7 +175,7 @@ void	ConfigLoader::parse(std::string path)
 				if (!(iss>>location_path))
 				{
 					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'location'"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				_curr_location = LocationConfig();
 				_curr_location.setPathPrefix(location_path);
@@ -191,7 +188,7 @@ void	ConfigLoader::parse(std::string path)
 					if (temp_word != "{")
 					{
 						std::cerr<<path<<":"<<_currline<<": Unexpected token after location prefix: "<<temp_word<<std::endl;
-						goto use_default_server;
+						goto fatal_exit;
 					}
 					inside_bracket++;
 				}
@@ -199,7 +196,7 @@ void	ConfigLoader::parse(std::string path)
 			else
 			{
 				std::cerr<<path<<":"<<_currline<<": Invalid keyword: "<<keyword<<", trying to set up default server"<<std::endl;
-				goto use_default_server;
+				goto fatal_exit;
 			}
 		}
 		else if (keyword == "server" && context == GLOBAL)
@@ -217,7 +214,7 @@ void	ConfigLoader::parse(std::string path)
 				else
 				{
 					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'server': "<<temp_word<<", trying to set up default server"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 			}
 			else
@@ -241,7 +238,7 @@ void	ConfigLoader::parse(std::string path)
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
 				{
 					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'root'"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				temp_word.erase(temp_word.size() - 1);
 				Directory	folder(temp_word);
@@ -256,7 +253,7 @@ void	ConfigLoader::parse(std::string path)
 					{
 						err_code = errno;
 						std::cerr<<path<<":"<<_currline<<": Unable to open the file '"<<temp_word<<"': "<<std::strerror(err_code)<<std::endl;
-						goto use_default_server;
+						goto fatal_exit;
 					}
 					::close(temp_fd);
 					_curr_location.setRoot(temp_word);
@@ -281,7 +278,7 @@ void	ConfigLoader::parse(std::string path)
 					else
 					{
 						std::cerr<<"Only the following methods are supported: GET, POST, DELETE"<<std::endl;
-						goto use_default_server;
+						goto fatal_exit;
 					}
 					temp_word.clear();
 				}
@@ -292,7 +289,7 @@ void	ConfigLoader::parse(std::string path)
 				if (!(iss>>temp_word))
 				{
 					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'index'"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				if (temp_word[temp_word.size() - 1] == ';')
 					temp_word.erase(temp_word.size() - 1);	
@@ -311,7 +308,7 @@ void	ConfigLoader::parse(std::string path)
 				if (!(iss>>temp_word) || !(temp_word == "on;" || temp_word == "off;"))
 				{
 					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'autoindex'"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				if (temp_word == "on;")
 					_curr_location.setAutoindex(true);
@@ -323,11 +320,11 @@ void	ConfigLoader::parse(std::string path)
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
 				{
 					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'upload_path'"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				temp_word.erase(temp_word.size() - 1);
 				if (temp_word.empty())
-					goto use_default_server;
+					goto fatal_exit;
 				_curr_location.setUploadPath(temp_word);
 #ifdef	_DEBUG
 				std::cout<<"parser: upload_path: "<<temp_word<<std::endl;
@@ -339,17 +336,17 @@ void	ConfigLoader::parse(std::string path)
 				if (!(iss>>code))
 				{
 					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'return'"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				if (!(iss>>temp_word))
 				{
 					std::cerr<<path<<":"<<_currline<<": Missing redirect target after 'return'"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				if (temp_word[temp_word.size() - 1] != ';')
 				{
 					std::cerr<<path<<":"<<_currline<<": Missing ';' at the end of 'return' directive"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				temp_word.erase(temp_word.size() - 1);
 				_curr_location.setRedirect(code, temp_word);
@@ -364,12 +361,12 @@ void	ConfigLoader::parse(std::string path)
 				if (!(iss>>extension) || !(iss>>handler))
 				{
 					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'cgi'"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				if (handler[handler.size() - 1] != ';')
 				{
 					std::cerr<<path<<":"<<_currline<<": Missing ';' at the end of 'cgi' directive"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				handler.erase(handler.size() - 1);
 				if (!extension.empty() && extension[0] != '.')
@@ -384,20 +381,20 @@ void	ConfigLoader::parse(std::string path)
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
 				{
 					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'client_max_body_size'"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				temp_word.erase(temp_word.size() - 1);
 				if (temp_word.empty())
-					goto use_default_server;
+					goto fatal_exit;
 				char unit = temp_word[temp_word.size() - 1];
 				if (unit != 'B' && unit != 'K' && unit != 'M' && unit != 'G')
 				{
 					std::cerr<<path<<":"<<_currline<<": Invalid unit for 'client_max_body_size'"<<std::endl;
-					goto use_default_server;
+					goto fatal_exit;
 				}
 				temp_word.erase(temp_word.size() - 1);
 				if (temp_word.empty())
-					goto use_default_server;
+					goto fatal_exit;
 				long value = std::strtol(temp_word.c_str(), 0, 10);
 				long multiplier = (unit == 'B') ? 1L : (unit == 'K') ? 1024L : (unit == 'M') ? (1024L * 1024L) : (1024L * 1024L * 1024L);
 				_curr_location.setClientBodyLimit(value * multiplier);
@@ -408,23 +405,15 @@ void	ConfigLoader::parse(std::string path)
 			else
 			{
 				std::cerr<<path<<":"<<_currline<<": Invalid keyword inside location block: "<<keyword<<std::endl;
-				goto use_default_server;
+				goto fatal_exit;
 			}
 		}
 	}
 	return;
-	use_default_server:
-	{
-		_servers.clear();
-		_use_default_server = true;
-		if (setDefaultServer())
-			goto fatal_exit;
-		return;
-	}
 	fatal_exit:
 	{
 		_fatal_error = true;
-		std::cerr<<"Fatal error: Unable to set up default server, abort"<<std::endl;
+		std::cerr<<"Fatal error: Unable to set up the server, abort"<<std::endl;
 	}
 }
 
@@ -458,7 +447,7 @@ ConfigLoader	&ConfigLoader::operator=(const ConfigLoader &other)
 	return (*this);
 }
 ConfigLoader::~ConfigLoader(void) {}
-
+/*
 int	ConfigLoader::setDefaultServer(void)
 {
 	int	ret = 0;
@@ -501,7 +490,7 @@ int	ConfigLoader::setDefaultServer(void)
 		ret = 2;
 	}
 	return (ret);
-}
+}*/
 
 const ServerConfig	&ConfigLoader::operator[](std::string name) const
 {
