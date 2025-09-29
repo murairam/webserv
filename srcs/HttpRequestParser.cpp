@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:35:23 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/29 20:07:42 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 00:58:13 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -439,7 +439,7 @@ bool HttpRequestParser::parseUrl
 		{
 			std::string::size_type	path_pos = raw_path.find('/', scheme_pos + 3);
 			if (path_pos != std::string::npos)
-				raw_path = raw_path.substr(0, path_pos);
+				raw_path = raw_path.substr(path_pos);
 			else
 				raw_path = "/";
 		}
