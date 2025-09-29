@@ -14,6 +14,7 @@
 #include "EventLoop.hpp"
 #include "HttpRequestParser.hpp"
 #include "Response.hpp"
+#include "utility.hpp"
 
 #ifdef	_USE_EPOLL
 Connection::~Connection(void)
@@ -30,12 +31,18 @@ Connection::~Connection(void)
 	}
 }
 
-Connection::Connection(int fd, const std::string &server_name, const ServerConfig *server)
+Connection::Connection(int fd, const std::string &server_name, const ServerConfig *server, const std::vector<const ServerConfig*> &servers)
 :_fd(fd), _loop(0), _server_name(server_name), _inbuf(),
 _outbuf(), _engaged(false), _should_close(false), _server(server),
-_method(0)
+_available_servers(servers), _method(0)
 {
 	(void)set_nonblock_fd_nothrow(_fd);
+	if (_available_servers.empty() && _server)
+		_available_servers.push_back(_server);
+	if (!_server && !_available_servers.empty())
+		_server = _available_servers[0];
+	if (_server)
+		_server_name = _server->getServerName();
 }
 
 void	Connection::engageLoop(EventLoop &loop)
@@ -244,6 +251,16 @@ void Connection::handleParsedRequest(const HttpRequest& request)
 	// Set method for compatibility with existing code
 	_method = MethodTokenToMask(request.getMethod());
 
+	if (!selectServerForRequest(request))
+	{
+		return;
+	}
+	if (!_server)
+	{
+		sendErrorResponse(500);
+		return;
+	}
+
 #ifdef _DEBUG
 std::cerr << "DEBUG: Looking for location match for: " << request.getPath() << std::endl;
 std::cerr << "DEBUG: About to call matchLocation..." << std::endl;
@@ -265,6 +282,11 @@ std::cerr << "DEBUG: matchLocation returned" << std::endl;
 #ifdef _DEBUG
 std::cerr << "DEBUG: Found location match, prefix: " << loc->getPathPrefix() << std::endl;
 #endif
+
+	if (loc->getRedirectCode() > 0) {
+		sendRedirectResponse(loc->getRedirectCode(), loc->getRedirectTarget());
+		return;
+	}
 
 	// Check if method is allowed
 	if (!loc->MethodIsAllowed(_method)) {
@@ -492,6 +514,42 @@ void Connection::handleDeleteRequest(const HttpRequest& request, const LocationC
 	}
 }
 
+bool Connection::selectServerForRequest(const HttpRequest& request)
+{
+	if (_available_servers.empty())
+		return (true);
+	std::string host_header = request.getHeader("host");
+	if (host_header.empty())
+	{
+		sendErrorResponse(400);
+		return (false);
+	}
+	std::string host = trim(host_header);
+	std::string::size_type colon = host.find(':');
+	if (colon != std::string::npos)
+		host = host.substr(0, colon);
+	host = toLower(host);
+	if (host.empty())
+	{
+		sendErrorResponse(400);
+		return (false);
+	}
+	for (std::vector<const ServerConfig*>::const_iterator it = _available_servers.begin(); it != _available_servers.end(); ++it)
+	{
+		const ServerConfig *candidate = *it;
+		if (!candidate)
+			continue;
+		if (toLower(candidate->getServerName()) == host)
+		{
+			_server = candidate;
+			_server_name = candidate->getServerName();
+			return (true);
+		}
+	}
+	sendErrorResponse(421);
+	return (false);
+}
+
 // Helper methods
 
 void Connection::sendSimpleResponse(int code, const std::string& content_type, const std::string& body)
@@ -644,20 +702,24 @@ void Connection::sendErrorResponse(int code)
     std::cerr << "DEBUG: Sending error response: " << code << " " << getReasonPhrase(code) << std::endl;
 #endif
 
-	const std::string& error_page = _server->getErrorPage(code);
-	std::ifstream file(error_page.c_str());
-	if (file) {
-		std::stringstream buffer;
-		buffer << file.rdbuf();
-		std::string body = buffer.str();
-		std::string response =
-			"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
-			"Content-Type: text/html\r\n"
-			"Content-Length: " + intToString(body.size()) + "\r\n"
-			"Connection: close\r\n\r\n" +
-			body;
-		queueWrite(response);
-		return;
+	std::string error_page;
+	if (_server)
+		error_page = _server->getErrorPage(code);
+	if (!error_page.empty()) {
+		std::ifstream file(error_page.c_str());
+		if (file) {
+			std::stringstream buffer;
+			buffer << file.rdbuf();
+			std::string body = buffer.str();
+			std::string response =
+				"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
+				"Content-Type: text/html\r\n"
+				"Content-Length: " + intToString(body.size()) + "\r\n"
+				"Connection: close\r\n\r\n" +
+				body;
+			queueWrite(response);
+			return;
+		}
 	}
 
 	std::string error_response =
@@ -706,6 +768,7 @@ std::string Connection::getReasonPhrase(int code) const
 		case 404: return "Not Found";
 		case 405: return "Method Not Allowed";
 		case 413: return "Payload Too Large";
+		case 421: return "Misdirected Request";
 		case 500: return "Internal Server Error";
 		case 501: return "Not Implemented";
 		default: return "Unknown";
@@ -842,12 +905,18 @@ Connection::~Connection(void)
 	}
 }
 
-Connection::Connection(int fd, const std::string &server_name, const ServerConfig *server)
+Connection::Connection(int fd, const std::string &server_name, const ServerConfig *server, const std::vector<const ServerConfig*> &servers)
 :_fd(fd), _loop(0), _server_name(server_name), _inbuf(),
 _outbuf(), _engaged(false), _should_close(false), _server(server),
-_method(0)
+_available_servers(servers), _method(0)
 {
 	(void)set_nonblock_fd_nothrow(_fd);
+	if (_available_servers.empty() && _server)
+		_available_servers.push_back(_server);
+	if (!_server && !_available_servers.empty())
+		_server = _available_servers[0];
+	if (_server)
+		_server_name = _server->getServerName();
 }
 
 void	Connection::engageLoop(EventLoop &loop)
@@ -1041,6 +1110,16 @@ void Connection::handleParsedRequest(const HttpRequest& request)
 	// Set method for compatibility with existing code
 	_method = MethodTokenToMask(request.getMethod());
 
+	if (!selectServerForRequest(request))
+	{
+		return;
+	}
+	if (!_server)
+	{
+		sendErrorResponse(500);
+		return;
+	}
+
 #ifdef _DEBUG
 std::cerr << "DEBUG: Looking for location match for: " << request.getPath() << std::endl;
 std::cerr << "DEBUG: About to call matchLocation..." << std::endl;
@@ -1062,6 +1141,11 @@ std::cerr << "DEBUG: matchLocation returned" << std::endl;
 #ifdef _DEBUG
 std::cerr << "DEBUG: Found location match, prefix: " << loc->getPathPrefix() << std::endl;
 #endif
+
+	if (loc->getRedirectCode() > 0) {
+		sendRedirectResponse(loc->getRedirectCode(), loc->getRedirectTarget());
+		return;
+	}
 
 	// Check if method is allowed
 	if (!loc->MethodIsAllowed(_method)) {
@@ -1289,6 +1373,42 @@ void Connection::handleDeleteRequest(const HttpRequest& request, const LocationC
 	}
 }
 
+bool Connection::selectServerForRequest(const HttpRequest& request)
+{
+	if (_available_servers.empty())
+		return (true);
+	std::string host_header = request.getHeader("host");
+	if (host_header.empty())
+	{
+		sendErrorResponse(400);
+		return (false);
+	}
+	std::string host = trim(host_header);
+	std::string::size_type colon = host.find(':');
+	if (colon != std::string::npos)
+		host = host.substr(0, colon);
+	host = toLower(host);
+	if (host.empty())
+	{
+		sendErrorResponse(400);
+		return (false);
+	}
+	for (std::vector<const ServerConfig*>::const_iterator it = _available_servers.begin(); it != _available_servers.end(); ++it)
+	{
+		const ServerConfig *candidate = *it;
+		if (!candidate)
+			continue;
+		if (toLower(candidate->getServerName()) == host)
+		{
+			_server = candidate;
+			_server_name = candidate->getServerName();
+			return (true);
+		}
+	}
+	sendErrorResponse(421);
+	return (false);
+}
+
 // Helper methods
 
 void Connection::sendSimpleResponse(int code, const std::string& content_type, const std::string& body)
@@ -1441,33 +1561,32 @@ void Connection::sendErrorResponse(int code)
     std::cerr << "DEBUG: Sending error response: " << code << " " << getReasonPhrase(code) << std::endl;
 #endif
 
-	const std::string& error_page = _server->getErrorPage(code);
-	int	fd = ::open(error_page.c_str(), O_RDONLY | O_NOFOLLOW);
-	if (fd > -1) {
-		(void)::close(fd);
-		std::ifstream	file(error_page.c_str());
-		std::stringstream buffer;
-		buffer << file.rdbuf();
-		std::string body = buffer.str();
-		std::string response =
-			"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
-			"Content-Type: text/html\r\n"
-			"Content-Length: " + intToString(body.size()) + "\r\n"
-			"Connection: close\r\n\r\n" + body;
-		queueWrite(response);
-		return;
+	std::string error_page;
+	if (_server)
+		error_page = _server->getErrorPage(code);
+	if (!error_page.empty()) {
+		std::ifstream file(error_page.c_str());
+		if (file) {
+			std::stringstream buffer;
+			buffer << file.rdbuf();
+			std::string body = buffer.str();
+			std::string response =
+				"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
+				"Content-Type: text/html\r\n"
+				"Content-Length: " + intToString(body.size()) + "\r\n"
+				"Connection: close\r\n\r\n" +
+				body;
+			queueWrite(response);
+			return;
+		}
 	}
-	else
-	{
-		std::string	body = CodePage::getInstance().getCodePage(code);
-		std::string response =
-			"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
-			"Content-Type: text/html\r\n"
-			"Content-Length: " + intToString(body.size()) + "\r\n"
-			"Connection: close\r\n\r\n" + body;
-		queueWrite(response);
-		return;
-	}
+
+	std::string error_response =
+		"HTTP/1.1 " + intToString(code) + " " + getReasonPhrase(code) + "\r\n"
+		"Content-Length: 0\r\n"
+		"Connection: close\r\n\r\n";
+	queueWrite(error_response);
+	requestClose();
 }
 
 std::string Connection::getContentType(const std::string &file_path) const
@@ -1508,6 +1627,7 @@ std::string Connection::getReasonPhrase(int code) const
 		case 404: return "Not Found";
 		case 405: return "Method Not Allowed";
 		case 413: return "Payload Too Large";
+		case 421: return "Misdirected Request";
 		case 500: return "Internal Server Error";
 		case 501: return "Not Implemented";
 		default: return "Unknown";

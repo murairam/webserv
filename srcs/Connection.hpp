@@ -32,12 +32,13 @@ class	Connection: public IFdHandler
 	private:
 		int			_fd;
 		EventLoop	*_loop;
-		const std::string	&_server_name;
+		std::string	_server_name;
 		std::string	_inbuf;              // Make sure this exists
 		std::string	_outbuf;
 		bool		_engaged;
 		bool		_should_close;       // Make sure this exists
 		const ServerConfig	*_server;
+		std::vector<const ServerConfig*>	_available_servers;
 		int			_method;
 
 		// NEW PARSER INTEGRATION
@@ -54,6 +55,7 @@ class	Connection: public IFdHandler
 		std::string buildFilePath(const LocationConfig *loc, const std::string &target);
 		bool        serveFile(const std::string &file_path);
 		void        sendErrorResponse(int code);
+		bool        selectServerForRequest(const HttpRequest& request);
 		void        sendSimpleResponse(int code, const std::string& content_type, const std::string& body);
 		void        sendRedirectResponse(int code, const std::string& location);
 		void        sendDirectoryListing(const std::string& dir_path, const std::string& uri);
@@ -72,7 +74,7 @@ class	Connection: public IFdHandler
 
 	public:
 		virtual	~Connection(void);
-		Connection(int fd, const std::string &server_name, const ServerConfig *server);
+		Connection(int fd, const std::string &server_name, const ServerConfig *server, const std::vector<const ServerConfig*> &servers);
 
 		void	engageLoop(EventLoop &loop);
 		/* Quits the loop and close the socket */

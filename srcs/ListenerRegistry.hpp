@@ -39,6 +39,7 @@ class	ListenerRegistry
 			Listener	_listener;
 			std::string	_default_name;
 			const ServerConfig	*_server_cfg;
+			std::vector<const ServerConfig*>	_servers;
 		};
 		
 		std::map<SocketKey,SocketEntry>	_sockets;
