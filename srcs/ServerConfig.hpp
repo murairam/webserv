@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:29 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/30 18:41:14 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/01 16:51:26 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ class	ServerConfig
 		const std::vector<LocationConfig>	&getLocations(void) const;
 		const LocationConfig	*matchLocation(const std::string &path) const;
 		long	getBodyLimit(const LocationConfig *loc) const;
-		const std::string	&getErrorPage(int code) const;
+		std::string	getErrorPage(int code) const;
 
 		void	setServerName(std::string name);
 		void	addEndpoint(std::string data);

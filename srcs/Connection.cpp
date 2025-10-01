@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/01 16:53:14 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/01 18:28:52 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -310,6 +310,7 @@ std::cerr << "DEBUG: Found location match, prefix: " << loc->getPathPrefix() << 
 
 void	Connection::handleGetRequest(const HttpRequest& request, const LocationConfig* loc)
 {
+	int	err_code = 0;
 #ifdef _DEBUG
 	std::cerr << "DEBUG: === HANDLING GET REQUEST ===" << std::endl;
 	std::cerr << "DEBUG: Path: " << request.getPath() << std::endl;
@@ -361,7 +362,7 @@ void	Connection::handleGetRequest(const HttpRequest& request, const LocationConf
 			std::cerr << "DEBUG: Trying index file: " << index_path << std::endl;
 #endif
 			if (!isDirectory(index_path)) {
-				if (serveFile(index_path)) {
+				if (serveFile(index_path, err_code)) {
 #ifdef _DEBUG
 					std::cerr << "DEBUG: Successfully served index file: " << index_files[i] << std::endl;
 #endif
@@ -390,11 +391,11 @@ void	Connection::handleGetRequest(const HttpRequest& request, const LocationConf
 #ifdef _DEBUG
 	std::cerr << "DEBUG: Attempting to serve regular file: " << file_path << std::endl;
 #endif
-	if (!serveFile(file_path)) {
+	if (!serveFile(file_path, err_code)) {
 #ifdef _DEBUG
 		std::cerr << "DEBUG: Failed to serve file: " << file_path << std::endl;
 #endif
-		sendErrorResponse(404);
+		sendErrorResponse(err_code);
 	} else {
 #ifdef _DEBUG
 		std::cerr << "DEBUG: Successfully served file: " << file_path << std::endl;
@@ -409,20 +410,47 @@ void	Connection::handlePostRequest(const HttpRequest& request, const LocationCon
 	std::cerr << "DEBUG: Path: " << request.getPath() << std::endl;
 	std::cerr << "DEBUG: Body length: " << request.getBody().length() << " bytes" << std::endl;
 	std::cerr << "DEBUG: Content-Type: " << request.getHeader("content-type") << std::endl;
-	std::cerr<<"DEBUG: Upload is "<<(loc->getUploadEnabled() ? "enabled" : "disabled")<<" for this path: "<<
-		loc->getPathPrefix()<<"/"<<loc->getAlias()<<std::endl;
+	if (!loc)
+		std::cerr << "DEBUG: No matching location for upload check" << std::endl;
+	else
+		std::cerr<<"DEBUG: Upload is "<<(loc->getUploadEnabled() ? "enabled" : "disabled")
+			<<" for this path: "<< loc->getPathPrefix()<<"/"<<loc->getAlias()<<std::endl;
 #endif
-	// Handle file upload
-	if (loc->getUploadEnabled())
+	if (!loc)
 	{
-		handleFileUpload(request, loc, method);
+		sendErrorResponse(500);
 		return;
 	}
-	// Check for CGI
+	if (loc->getUploadEnabled())
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Handling file upload, upload path: " << loc->getAlias() << std::endl;
+		std::cerr << "DEBUG: Upload body size: " << request.getBody().length() << " bytes" << std::endl;
+		std::cerr << "DEBUG: Upload content-type: " << request.getHeader("content-type") << std::endl;
+#endif
+		std::string	response_body;
+		int	status_code = 0;
+		if (!uploadFile(request, loc, response_body, status_code, method))
+		{
+#ifdef _DEBUG
+			std::cerr<<"DEBUG: File upload failed"<<std::endl;
+#endif
+			if (status_code < 1)
+				status_code = 500;
+			sendErrorResponse(status_code);
+			return;
+		}
+		if (status_code < 1)
+			status_code = 201;
+		sendSimpleResponse(status_code, "text/plain", response_body);
+		return;
+	}
 	std::string extension = getFileExtension(request.getPath());
-	if (!extension.empty()) {
+	if (!extension.empty())
+	{
 		std::string cgi_program = loc->getCgi(extension);
-		if (!cgi_program.empty()) {
+		if (!cgi_program.empty())
+		{
 #ifdef _DEBUG
 			std::cerr << "DEBUG: CGI handler found for extension " << extension
 					  << ": " << cgi_program << std::endl;
@@ -431,7 +459,6 @@ void	Connection::handlePostRequest(const HttpRequest& request, const LocationCon
 			return;
 		}
 	}
-	// Default POST response
 	std::string response_body = "POST/PUT request processed successfully";
 	sendSimpleResponse(200, "text/plain", response_body);
 }
@@ -561,13 +588,13 @@ void Connection::sendRedirectResponse(int code, const std::string& location)
 void Connection::sendDirectoryListing(const std::string& dir_path, const std::string& uri)
 {
 #ifdef _DEBUG
-	std::cerr << "DEBUG: Generating directory listing for: " << dir_path << std::endl;
+	std::cerr << "DEBUG: Generating directory listing for: " << dir_path << "\nDEBUG uri is: "<<std::endl;
 #endif
 	Response response = Response::createDirectoryListing(dir_path, uri);
 	queueWrite(response.serialize());
 	requestClose();
 }
-
+/*
 void Connection::handleFileUpload(const HttpRequest& request, const LocationConfig* loc, const std::string &method)
 {
 #ifdef _DEBUG
@@ -588,9 +615,9 @@ void Connection::handleFileUpload(const HttpRequest& request, const LocationConf
         return;
 	}
     sendSimpleResponse(201, "text/plain", response_body);
-}
+}*/
 
-void Connection::handleCgiRequest(const HttpRequest& request, const LocationConfig* loc, const std::string& cgi_program)
+void	Connection::handleCgiRequest(const HttpRequest& request, const LocationConfig* loc, const std::string& cgi_program)
 {
 	std::string script_path = buildFilePath(loc, request.getPath());
 
@@ -678,20 +705,13 @@ void Connection::checkCgi(void)
 #endif
 }
 
-std::string Connection::buildFilePath(const LocationConfig *loc, const std::string &target)
+std::string	Connection::buildFilePath(const LocationConfig *loc, const std::string &target)
 {
 	if (!loc)
 		return (target);
-
 	std::string base_path = loc->getAlias();
 	if (base_path.empty())
 		base_path = std::string(".");
-
-#ifdef _DEBUG
-	std::cerr << "DEBUG: buildFilePath - base_path: " << base_path << std::endl;
-	std::cerr << "DEBUG: buildFilePath - target: " << target << std::endl;
-#endif
-
 	std::string prefix = loc->getPathPrefix();
 	if (prefix.empty())
 		prefix = "/";
@@ -699,7 +719,6 @@ std::string Connection::buildFilePath(const LocationConfig *loc, const std::stri
 		prefix.insert(prefix.begin(), '/');
 	while (prefix.size() > 1 && prefix[prefix.size() - 1] == '/')
 		prefix.erase(prefix.size() - 1);
-
 	std::string relative_path = target.empty() ? std::string("/") : target;
 	if (prefix != "/" && relative_path.compare(0, prefix.size(), prefix) == 0)
 	{
@@ -707,31 +726,40 @@ std::string Connection::buildFilePath(const LocationConfig *loc, const std::stri
 		if (relative_path.empty())
 			relative_path = "/";
 	}
-
 	if (relative_path == "/" || relative_path.empty())
 	{
 		if (base_path.size() > 1 && base_path[base_path.size() - 1] == '/')
 			base_path.erase(base_path.size() - 1);
 		return (base_path);
 	}
-
 	if (relative_path[0] == '/')
 		relative_path.erase(0, 1);
-
-#ifdef _DEBUG
-	std::cerr << "DEBUG: buildFilePath - relative_path: " << relative_path << std::endl;
-	std::cerr << "DEBUG: buildFilePath - final result: " << joinPath(base_path, relative_path) << std::endl;
-#endif
-
 	return (joinPath(base_path, relative_path));
 }
 
-bool Connection::serveFile(const std::string &file_path)
+bool	Connection::serveFile(const std::string &file_path, int &err_code)
 {
+	int	fd = ::open(file_path.c_str(), O_NOFOLLOW | O_RDONLY | O_NONBLOCK);
+	if (fd < 0)
+	{
+		err_code = errno;
+		if (err_code == EISDIR || ELOOP || ENAMETOOLONG || EOVERFLOW || ENXIO)
+			err_code = 400;
+		else if (err_code == EACCES)
+			err_code = 403;
+		else if (err_code == ENOSR || err_code == ENFILE || err_code == EIO
+				|| EINVAL || EINTR)
+			err_code = 500;
+		return (false);
+	}
+	(void)::close(fd);
+	// Read file content
 	std::ifstream file(file_path.c_str(), std::ios::binary);
 	if (!file.is_open())
+	{
+		err_code = 500;
 		return (false);
-	// Read file content
+	}
 	std::string content((std::istreambuf_iterator<char>(file)),
 						std::istreambuf_iterator<char>());
 	file.close();
@@ -760,29 +788,26 @@ void Connection::sendErrorResponse(int code)
 	std::string	error_page;
 	if (_server)
 		error_page = _server->getErrorPage(code);
-	if (!error_page.empty()) {
+	if (!error_page.empty())
+	{
 		std::ifstream file(error_page.c_str());
-		if (file) {
+		if (file)
+		{
 			std::stringstream buffer;
 			buffer << file.rdbuf();
 			std::string body = buffer.str();
 			std::string response =
-				"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\n"
-				"Content-Type: text/html\r\n"
-				"Content-Length: " + intToString(body.size()) + "\r\n"
-				"Connection: close\r\n\r\n" +
-				body;
+			"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\n" + "Content-Type: text/html\r\n" + 	"Content-Length: " + intToString(body.size()) + "\r\n" + 	"Connection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + body;
 			queueWrite(response);
 			return;
 		}
 	}
-
-	std::string error_response =
-		"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\n"
-		"Content-Length: 0\r\n"
-		"Connection: close\r\n\r\n";
-	queueWrite(error_response);
-	requestClose();
+	else
+	{
+		std::string response =
+			"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\n" + "Content-Type: text/html\r\n" + 	"Content-Length: " + intToString(CodePage::getInstance().getCodePage(code).size()) + "\r\n" + 	"Connection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + CodePage::getInstance().getCodePage(code);
+		queueWrite(response);
+	}
 }
 
 std::string Connection::getContentType(const std::string &file_path) const

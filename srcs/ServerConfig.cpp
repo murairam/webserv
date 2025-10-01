@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:19 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/30 18:49:46 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/01 16:51:19 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,7 +106,7 @@ long	ServerConfig::getBodyLimit(const LocationConfig *loc) const
 /*	Error page for 404 is guaranteed to be existent;
 	that emptystr is there to avoid compiler warning
 */
-const std::string	&ServerConfig::getErrorPage(int code) const
+std::string	ServerConfig::getErrorPage(int code) const
 {
 	std::map<int,std::string>::const_iterator	it = _error_pages.find(code);
 	if (it != _error_pages.end())
@@ -114,8 +114,7 @@ const std::string	&ServerConfig::getErrorPage(int code) const
 	std::map<int,std::string>::const_iterator	it2 = _error_pages.find(404);
 	if (it2 != _error_pages.end())
 		return (it2->second);
-	static const std::string	emptystr;
-	return (emptystr);
+	return (std::string());
 }
 
 void	ServerConfig::setServerName(std::string name)
