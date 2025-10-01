@@ -1,1 +1,95 @@
-<h1>Hello from Mari & Yang Webserver!</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Mari & Yang Webserver</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .feature-card {
+            background: #fff;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border-color: #007bff;
+        }
+        .feature-button {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        .feature-button:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Mari & Yang Webserver</h1>
+        <p>Welcome to our comprehensive HTTP/1.1 webserver implementation with advanced CGI support!</p>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>🐍🐚🐪🐘💎 CGI Support</h3>
+                <p>Multi-language CGI support with Python, Shell, Perl, PHP, and Ruby scripts.</p>
+                <a href="/cgi/test.py" class="feature-button">Test CGI</a>
+            </div>
+
+            <div class="feature-card">
+                <h3>🍪 Session Management</h3>
+                <p>Complete cookie and session handling with multiple implementation examples.</p>
+                <a href="/sessions.html" class="feature-button">Try Sessions</a>
+            </div>
+
+            <div class="feature-card">
+                <h3>📁 File Upload</h3>
+                <p>File upload capabilities with configurable storage locations.</p>
+                <a href="/upload" class="feature-button">Upload Files</a>
+            </div>
+
+            <div class="feature-card">
+                <h3>🔄 HTTP Methods</h3>
+                <p>Support for GET, POST, PUT, DELETE methods with proper routing.</p>
+                <a href="/cgi/test.py?name=Test&method=GET" class="feature-button">Test Methods</a>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <h2>🎯 42 School Webserv Project</h2>
+            <p>This implementation exceeds all requirements with professional-grade features!</p>
+        </div>
+    </div>
+</body>
+</html>
