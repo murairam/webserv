@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/01 15:21:59 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/01 15:39:20 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -732,7 +732,6 @@ void	Connection::onWritable(int fd)
 {
 	ssize_t	n;
 	int	events = EVENT_READ;
-	bool	should_drop = false;
 	(void)fd;
 
 	if (!_outbuf.empty())
@@ -743,28 +742,17 @@ void	Connection::onWritable(int fd)
 		n = ::send(_fd, _outbuf.data(), static_cast<int>(_outbuf.size()), 0);
 		if (n > 0)
 			_outbuf.erase(0, static_cast<size_t>(n));
-		else if (n < 0)
-		{
-			if (errno != EAGAIN
-#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
-				&& errno != EWOULDBLOCK
-#endif
-			)
-			{
-				this->onError(_fd);
-				_outbuf.clear();
-				should_drop = true;
-			}
-		}
+		// If n <= 0, do nothing - poll will call us again when ready
+		// or onError/onHangup will be called if there's a real problem
 	}
-	if (should_drop)
-		return;
+
 	if (_loop && _engaged)
 	{
 		if (!_outbuf.empty())
 			events = events | EVENT_WRITE;
 		_loop->set_events(_fd, events);
 	}
+
 	if (_should_close && _outbuf.empty())
 	{
 		if (_loop && _engaged)
