@@ -148,8 +148,11 @@ void	ConfigLoader::parse(std::string path)
 					long	limit = std::strtol(temp_word.c_str(), 0, 10);
 					_curr_server.setBodySize(limit, unit);
 				}
-				long	limit = std::strtol(temp_word.c_str(), 0, 10);
-				_curr_server.setBodySize(limit, 'B');
+				else
+				{
+					long	limit = std::strtol(temp_word.c_str(), 0, 10);
+					_curr_server.setBodySize(limit, 'B');
+				}
 #ifdef	_DEBUG
 				std::cout<<"parser: client_max_body_size: "<<temp_word<<unit<<std::endl;
 #endif
@@ -233,35 +236,6 @@ void	ConfigLoader::parse(std::string path)
 			}
 			else if (keyword == "{")
 				inside_bracket++;
-			else if (keyword == "root")
-			{
-				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
-				{
-					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'root'"<<std::endl;
-					goto fatal_exit;
-				}
-				temp_word.erase(temp_word.size() - 1);
-				Directory	folder(temp_word);
-#ifdef	_DEBUG
-				std::cout<<"Parser: location root path: "<<temp_word<<std::endl;
-#endif
-				folder.ft_opendir();
-				if (!folder.isOpen())
-				{
-					int	temp_fd = ::open(temp_word.c_str(), O_WRONLY | O_NOFOLLOW);
-					if (temp_fd < 0)
-					{
-						err_code = errno;
-						std::cerr<<path<<":"<<_currline<<": Unable to open the file '"<<temp_word<<"': "<<std::strerror(err_code)<<std::endl;
-						goto fatal_exit;
-					}
-					::close(temp_fd);
-					_curr_location.setRoot(temp_word);
-					continue;
-				}
-				_curr_location.setRoot(temp_word);
-				folder.ft_closedir();
-			}
 			else if (keyword.size() == 1 && keyword[0] == '{')
 				inside_bracket++;
 			else if (keyword == "methods")
@@ -275,9 +249,11 @@ void	ConfigLoader::parse(std::string path)
 						method_mask |= DELETE_MASK;
 					else if (temp_word == "POST" || temp_word == "POST;")
 						method_mask |= POST_MASK;
+					else if (temp_word == "PUT" || temp_word == "PUT;")
+						method_mask |= PUT_MASK;
 					else
 					{
-						std::cerr<<"Only the following methods are supported: GET, POST, DELETE"<<std::endl;
+						std::cerr<<"Only the following methods are supported: GET, POST, DELETE, PUT"<<std::endl;
 						goto fatal_exit;
 					}
 					temp_word.clear();
@@ -315,19 +291,28 @@ void	ConfigLoader::parse(std::string path)
 				else
 					_curr_location.setAutoindex(false);
 			}
-			else if (keyword == "upload_path")
+			else if (keyword == "alias")
 			{
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
 				{
-					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'upload_path'"<<std::endl;
+					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'alias'"<<std::endl;
 					goto fatal_exit;
 				}
 				temp_word.erase(temp_word.size() - 1);
 				if (temp_word.empty())
 					goto fatal_exit;
-				_curr_location.setUploadPath(temp_word);
+				struct stat	alias_stat;
+				std::memset(&alias_stat, 0, sizeof(alias_stat));
+				if (stat(temp_word.c_str(), &alias_stat) < 0)
+				{
+					err_code = errno;
+					std::cerr<<path<<":"<<_currline<<": Unable to access alias target '"<<temp_word
+						<<"': "<<std::strerror(err_code)<<std::endl;
+					goto fatal_exit;
+				}
+				_curr_location.setAlias(temp_word);
 #ifdef	_DEBUG
-				std::cout<<"parser: upload_path: "<<temp_word<<std::endl;
+				std::cout<<"parser: alias: "<<temp_word<<std::endl;
 #endif
 			}
 			else if (keyword == "return")
@@ -399,7 +384,7 @@ void	ConfigLoader::parse(std::string path)
 				long multiplier = (unit == 'B') ? 1L : (unit == 'K') ? 1024L : (unit == 'M') ? (1024L * 1024L) : (1024L * 1024L * 1024L);
 				_curr_location.setClientBodyLimit(value * multiplier);
 #ifdef	_DEBUG
-				std::cout<<"parser: location body limit: "<<value<<unit<<std::endl;
+				std::cout<<"parser: location body size limit override is: "<<value<<unit<<" , which is "<<_curr_location.getClientBodyLimit()<<std::endl;
 #endif
 			}
 			else
@@ -462,7 +447,7 @@ int	ConfigLoader::setDefaultServer(void)
 
 		root_location.setPathPrefix("/");
 		root_location.setMethod(GET_MASK);
-		root_location.setRoot("./data/www/example/html");
+		root_location.setAlias("./data/www/example/html");
 		root_location.addIndexFile("index.html");
 		root_location.setAutoindex(false);
 		server.addLocation(root_location);

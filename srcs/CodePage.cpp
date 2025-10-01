@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/18 17:49:25 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 14:36:43 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/01 13:49:19 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,14 +49,6 @@ std::string	CodePage::int_to_string(int code)
 	oss<<code;
 	return (oss.str());
 }
-/*
-bool	CodePage::no_body_response(const std::string &method)
-{
-	if (method == "HEAD")
-		return (true);
-	return (false);	
-}
-*/
 
 CodePage::CodePage(void)
 :_template_prefix("<!DOCTYPE html>\n"

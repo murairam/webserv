@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:35:23 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/30 00:58:13 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 19:27:26 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ HttpRequest HttpRequestParser::parse(std::istream &input)
     if (!parseHeaders(input, request))
         return (request);  // Error already set
 
-    // Parse body (for POST requests)
+    // Parse body (for POST and PUT requests)
     if (!parseBody(input, request))
         return (request);  // Error already set
 
@@ -303,13 +303,13 @@ bool HttpRequestParser::parseFixedLengthBody(std::istream &input, HttpRequest &r
 void HttpRequestParser::parseHostHeader(const std::string &value, HttpRequest &request)
 {
     // Host header can be: "example.com" or "example.com:8080"
-    std::string host = trim(value);
+    std::string	host = trim(value);
     std::string::size_type colon_pos = host.find(':');
 
     if (colon_pos != std::string::npos)
     {
         // Extract port (we don't store it in HttpRequest for now)
-        std::string port_str = host.substr(colon_pos + 1);
+        std::string	port_str = host.substr(colon_pos + 1);
         host = host.substr(0, colon_pos);
     }
 
@@ -317,7 +317,7 @@ void HttpRequestParser::parseHostHeader(const std::string &value, HttpRequest &r
     (void)request;  // Suppress unused parameter warning
 }
 
-void HttpRequestParser::parseConnectionHeader(const std::string &value, HttpRequest &request)
+void	HttpRequestParser::parseConnectionHeader(const std::string &value, HttpRequest &request)
 {
     std::string conn = toLower(trim(value));
 
@@ -400,7 +400,7 @@ std::string HttpRequestParser::extractHeaderValue(const std::string &line)
 
 bool HttpRequestParser::isValidMethod(const std::string &method)
 {
-    return (method == "GET" || method == "POST" || method == "DELETE");
+    return (method == "GET" || method == "POST" || method == "DELETE" || method == "PUT");
 }
 
 bool HttpRequestParser::isValidHttpVersion(const std::string &version)

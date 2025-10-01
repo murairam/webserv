@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:19:01 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/29 17:43:05 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 02:29:49 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,8 @@ HttpRequest::HttpRequest(void)
     : _method(""), _path(""), _query(""), _version(""),
       _headers(), _cookies(), _body(""),
       _persistent(true), _chunked(false), _content_length(-1),
-      _should_reject(false), _error_code(0), _header_set(false)
+      _should_reject(false), _error_code(0), _header_set(false),
+	  _upload_filename()
 {
 }
 
@@ -28,7 +29,8 @@ HttpRequest::HttpRequest(const HttpRequest &other)
       _version(other._version), _headers(other._headers), _cookies(other._cookies),
       _body(other._body), _persistent(other._persistent), _chunked(other._chunked),
       _content_length(other._content_length), _should_reject(other._should_reject),
-      _error_code(other._error_code), _header_set(false)
+      _error_code(other._error_code), _header_set(false),
+	  _upload_filename(other._upload_filename)
 {
 }
 
@@ -49,6 +51,7 @@ HttpRequest &HttpRequest::operator=(const HttpRequest &other)
         _should_reject = other._should_reject;
         _error_code = other._error_code;
 		_header_set = other._header_set;
+		_upload_filename = other._upload_filename;
     }
     return (*this);
 }
@@ -83,6 +86,11 @@ const std::string &HttpRequest::getVersion(void) const
 const std::string &HttpRequest::getBody(void) const
 {
     return (_body);
+}
+
+const std::string	&HttpRequest::getUploadFilename(void) const
+{
+	return (_upload_filename);
 }
 
 bool HttpRequest::getPersistent(void) const
@@ -135,6 +143,11 @@ void HttpRequest::setVersion(std::string version)
 void HttpRequest::setBody(std::string body)
 {
     _body = body;
+}
+
+void	HttpRequest::setUploadFilename(std::string upload_filename)
+{
+	_upload_filename = upload_filename;
 }
 
 void HttpRequest::setPersistent(bool persistent)

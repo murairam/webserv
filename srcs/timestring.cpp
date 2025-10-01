@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 16:17:11 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 16:56:00 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 15:15:00 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -280,4 +280,12 @@ int compareTimeString(const std::string &t1, const std::string &t2)
 	if (t1x > t2x)
 		return (1);
 	return (0);
+}
+
+std::string	getUniqueTimeString(void)
+{
+	static unsigned long	counter = 0;
+	std::ostringstream	oss;
+	oss<<"uploaded_at_"<<getTimeString()<<"_"<<counter;
+	return (oss.str());
 }

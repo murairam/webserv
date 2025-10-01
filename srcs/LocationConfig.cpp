@@ -6,22 +6,21 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 14:14:01 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/17 13:36:01 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/01 13:10:53 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "LocationConfig.hpp"
 
 LocationConfig::LocationConfig(void)
-: _path_prefix(), _allowed_methods(0), _root(), _index_files(), _autoindex(false),
-_upload_enabled(false), _upload_path(), _redirect_code(0), _redirect_target(),
+: _path_prefix(), _allowed_methods(0), _index_files(), _autoindex(false),
+_alias(), _redirect_code(0), _redirect_target(),
 _client_max_body_size_override(-1), _priority(0), _cgi_handlers() {}
 
 LocationConfig::LocationConfig(const LocationConfig &other)
 :_path_prefix(other._path_prefix), _allowed_methods(other._allowed_methods),
-_root(other._root), _index_files(other._index_files), _autoindex(other._autoindex),
-_upload_enabled(other._upload_enabled), _upload_path(other._upload_path),
-_redirect_code(other._redirect_code),
+_index_files(other._index_files), _autoindex(other._autoindex),
+_alias(other._alias), _redirect_code(other._redirect_code),
 _redirect_target(other._redirect_target), _client_max_body_size_override(other._client_max_body_size_override),
 _priority(other._priority), _cgi_handlers(other._cgi_handlers) {}
 
@@ -31,11 +30,9 @@ LocationConfig	&LocationConfig::operator=(const LocationConfig &other)
 	{
 		_path_prefix = other._path_prefix;
 		_allowed_methods = other._allowed_methods;
-		_root = other._root;
 		_index_files = other._index_files;
 		_autoindex = other._autoindex;
-		_upload_enabled = other._upload_enabled;
-		_upload_path = other._upload_path;
+		_alias = other._alias;
 		_redirect_code = other._redirect_code;
 		_redirect_target = other._redirect_target;
 		_client_max_body_size_override = other._client_max_body_size_override;
@@ -57,11 +54,6 @@ int	LocationConfig::getAllowedMethods(void) const
 	return (_allowed_methods);
 }
 
-const std::string	&LocationConfig::getRoot(void) const
-{
-	return (_root);
-}
-
 const std::vector<std::string>	&LocationConfig::getIndexFiles(void) const
 {
 	return (_index_files);
@@ -74,12 +66,12 @@ bool	LocationConfig::getAutoindex(void) const
 
 bool	LocationConfig::getUploadEnabled(void) const
 {
-	return (_upload_enabled);
+	return (!_alias.empty() && (_allowed_methods & (POST_MASK | PUT_MASK)) != 0);
 }
 
-const std::string	&LocationConfig::getUploadPath(void) const
+const std::string	&LocationConfig::getAlias(void) const
 {
-	return (_upload_path);
+	return (_alias);
 }
 
 int	LocationConfig::getRedirectCode(void) const
@@ -119,11 +111,6 @@ void	LocationConfig::setPathPrefix(const std::string &prefix)
 	_path_prefix = prefix;
 }
 
-void	LocationConfig::setRoot(std::string path)
-{
-	_root = path;
-}
-
 void	LocationConfig::setMethod(int method_mask)
 {
 	_allowed_methods = method_mask;	
@@ -139,10 +126,9 @@ void	LocationConfig::setAutoindex(bool enabled)
 	_autoindex = enabled;
 }
 
-void	LocationConfig::setUploadPath(const std::string &path)
+void	LocationConfig::setAlias(const std::string &path)
 {
-	_upload_path = path;
-	_upload_enabled = true;
+	_alias = path;
 }
 
 void	LocationConfig::setRedirect(int code, const std::string &target)
@@ -171,7 +157,7 @@ void	LocationConfig::debug(void) const
 {
 	std::cout<<"LocationConfig debug info:\n"
 	<<"path_prefix: "<<_path_prefix<<"\n"<<"methods mask: "<<_allowed_methods<<"\n"
-	<<"root path: "<<_root<<"\n"<<"index files: ";
+	<<"alias path: "<<_alias<<"\n"<<"index files: ";
 	size_t	i = 0;
 	while (i < _index_files.size())
 	{
@@ -184,8 +170,8 @@ void	LocationConfig::debug(void) const
 		std::cout<<"autoindex is enabled\n";
 	else
 		std::cout<<"autoindex is disabled\n";
-	if (_upload_enabled)
-		std::cout<<"upload is enabled\n"<<"upload path: "<<_upload_path<<"\n";
+	if (getUploadEnabled())
+		std::cout<<"upload is enabled\n"<<"upload path: "<<_alias<<"\n";
 	else
 		std::cout<<"upload is disabled\n";
 	std::cout<<"redirect code: "<<_redirect_code<<"\nredirect target: "<<_redirect_target

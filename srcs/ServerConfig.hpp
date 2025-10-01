@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:29 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/16 18:13:19 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 18:41:14 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 # include "_headers.hpp"
 # include "LocationConfig.hpp"
 # include "Endpoint.hpp"
+# include "utility.hpp"
 
 class	ServerConfig
 {

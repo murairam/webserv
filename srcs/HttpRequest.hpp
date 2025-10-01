@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:12:09 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/29 17:21:55 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 02:28:49 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@ private:
     bool                                _should_reject;
     int                                 _error_code;
 	bool								_header_set;
+	std::string							_upload_filename;
 
 public:
     // Orthodox Canonical Form
@@ -46,6 +47,7 @@ public:
     const std::string   &getQuery(void) const;
     const std::string   &getVersion(void) const;
     const std::string   &getBody(void) const;
+	const std::string	&getUploadFilename(void) const;
     bool                getPersistent(void) const;
     bool                getChunked(void) const;
     long                getContentLength(void) const;
@@ -58,6 +60,7 @@ public:
     void    setQuery(std::string query);
     void    setVersion(std::string version);
     void    setBody(std::string body);
+	void	setUploadFilename(std::string upload_filename);
     void    setPersistent(bool persistent);
     void    setChunked(bool chunked);
     void    setContentLength(long length);

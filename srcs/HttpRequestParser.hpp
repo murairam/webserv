@@ -44,18 +44,18 @@ private:
     static bool parseFixedLengthBody(std::istream &input, HttpRequest &request);
 
     // Header-specific parsing helpers
-    static void parseHostHeader(const std::string &value, HttpRequest &request);
-    static void parseConnectionHeader(const std::string &value, HttpRequest &request);
-    static void parseCookieHeader(const std::string &value, HttpRequest &request);
-    static void parseContentLengthHeader(const std::string &value, HttpRequest &request);
-    static void parseTransferEncodingHeader(const std::string &value, HttpRequest &request);
+    static void	parseHostHeader(const std::string &value, HttpRequest &request);
+    static void	parseConnectionHeader(const std::string &value, HttpRequest &request);
+    static void	parseCookieHeader(const std::string &value, HttpRequest &request);
+    static void	parseContentLengthHeader(const std::string &value, HttpRequest &request);
+    static void	parseTransferEncodingHeader(const std::string &value, HttpRequest &request);
 
-    // Utility methods
-    static std::string	extractHeaderName(const std::string &line);
-    static std::string	extractHeaderValue(const std::string &line);
-    static bool	isValidMethod(const std::string &method);
-    static bool	isValidHttpVersion(const std::string &version);
-    static void	setError(HttpRequest &request, int error_code);
+	// Utility methods
+	static std::string	extractHeaderName(const std::string &line);
+	static std::string	extractHeaderValue(const std::string &line);
+	static bool	isValidMethod(const std::string &method);
+	static bool	isValidHttpVersion(const std::string &version);
+	static void	setError(HttpRequest &request, int error_code);
 
 	// URL parsing utilities
 	static bool	parseUrl(const std::string &url, std::string &path, std::string &query);

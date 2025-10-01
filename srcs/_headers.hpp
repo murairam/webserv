@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   _headers.hpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:18:53 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/19 14:07:01 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/01 13:49:59 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,9 +21,9 @@
 # include <sys/event.h>  /* for kqueue if we decide to use it for macOS */
 #endif
 
-#ifdef __LINUX__
-# include <sys/epoll.h>  // for epoll on Linux
-#endif
+# if defined(__LINUX__) || defined(__linux__)
+#  include <poll.h>
+# endif
 
 # include <stdexcept>
 # include <vector>
@@ -40,12 +40,12 @@
 # include <cstring>
 # include <cstdlib>
 # include <cerrno>
+# include <cstdio>
 
 # include <sys/types.h>
 # include <sys/socket.h>
 # include <sys/stat.h>
 # include <sys/wait.h>
-# include <poll.h>
 # include <netdb.h>
 # include <netinet/in.h>
 # include <arpa/inet.h>

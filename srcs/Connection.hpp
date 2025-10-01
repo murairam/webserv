@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:08:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/29 18:03:41 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/01 11:47:14 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,9 @@
 # include "HttpRequest.hpp"
 # include "HttpRequestParser.hpp"
 # include "CodePage.hpp"
+# include "EventLoop.hpp"
+# include "Response.hpp"
+# include "timestring.hpp"
 
 class	EventLoop;
 
@@ -42,31 +45,30 @@ class	Connection: public IFdHandler
 		int			_method;
 
 		// NEW PARSER INTEGRATION
-		void        dispatcher(void);    // Make sure this is declared
-		bool        handleRequestWithNewParser(void);  // Make sure this is declared
-		void        handleParsedRequest(const HttpRequest& request);
+		void	dispatcher(void);    // Make sure this is declared
+		bool	handleRequestWithNewParser(void);  // Make sure this is declared
+		void	handleParsedRequest(const HttpRequest &request);
 
 		// METHOD-SPECIFIC HANDLERS
-		void        handleGetRequest(const HttpRequest& request, const LocationConfig* loc);
-		void        handlePostRequest(const HttpRequest& request, const LocationConfig* loc);
-		void        handleDeleteRequest(const HttpRequest& request, const LocationConfig* loc);
+		void	handleGetRequest(const HttpRequest &request, const LocationConfig *loc);
+		void	handlePostRequest(const HttpRequest& request, const LocationConfig *loc, const std::string &method);
+		void	handleDeleteRequest(const HttpRequest &request, const LocationConfig *loc);
 
 		// HELPER METHODS
-		std::string buildFilePath(const LocationConfig *loc, const std::string &target);
-		bool        serveFile(const std::string &file_path);
-		void        sendErrorResponse(int code);
-		bool        selectServerForRequest(const HttpRequest& request);
-		void        sendSimpleResponse(int code, const std::string& content_type, const std::string& body);
-		void        sendRedirectResponse(int code, const std::string& location);
-		void        sendDirectoryListing(const std::string& dir_path, const std::string& uri);
-		void        handleFileUpload(const HttpRequest& request, const LocationConfig* loc);
-		void        handleCgiRequest(const HttpRequest& request, const LocationConfig* loc, const std::string& cgi_program);
+		std::string	buildFilePath(const LocationConfig *loc, const std::string &target);
+		bool	serveFile(const std::string &file_path);
+		void	sendErrorResponse(int code);
+		bool	selectServerForRequest(const HttpRequest &request);
+		void	sendSimpleResponse(int code, const std::string &content_type, const std::string &body);
+		void	sendRedirectResponse(int code, const std::string &location);
+		void	sendDirectoryListing(const std::string &dir_path, const std::string &uri);
+		void	handleFileUpload(const HttpRequest &request, const LocationConfig *loc, const std::string &method);
+		void	handleCgiRequest(const HttpRequest &request, const LocationConfig *loc, const std::string &cgi_program);
 
 		// UTILITY METHODS
-		std::string getContentType(const std::string &file_path) const;
-		std::string getFileExtension(const std::string& path) const;
-		std::string getReasonPhrase(int code) const;
-		std::string intToString(int value) const;
+		std::string	getContentType(const std::string &file_path) const;
+		std::string	getFileExtension(const std::string &path) const;
+		std::string	intToString(int value) const;
 
 		Connection(void);
 		Connection(const Connection &other);
@@ -75,6 +77,10 @@ class	Connection: public IFdHandler
 	public:
 		virtual	~Connection(void);
 		Connection(int fd, const std::string &server_name, const ServerConfig *server, const std::vector<const ServerConfig*> &servers);
+		/*	This one ensures all write/read/recv/send would be 
+			precedented by a poll;
+		*/
+		Connection(int fd, std::string action, std::string path, int &err_code, std::string filename = std::string());
 
 		void	engageLoop(EventLoop &loop);
 		/* Quits the loop and close the socket */
@@ -96,6 +102,9 @@ class	Connection: public IFdHandler
 		virtual void	onError(int fd);
 		virtual void	onHangup(int fd);
 		virtual void	onTick(int fd);
+
+		static bool	handleMultipart(const HttpRequest &request, std::string &filename, std::string &content);
+		static bool	uploadFile(const HttpRequest &request, const LocationConfig *loc, std::string &response_body, int &status_code, const std::string &method);
 };
 
 #endif

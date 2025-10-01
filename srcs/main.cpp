@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/29 16:52:03 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 01:00:49 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -109,10 +109,10 @@ int	main(int argc, char **argv, char **envp)
 			}
 			it++;
 		}
-		if (!registry.engage_all(loop, 128, manager))
+		if (!registry.engage_all(loop, 256, manager))
 			throw std::runtime_error("\n---Unable to open any listening socket");
 
-		loop.set_timeout(400);
+		loop.set_timeout(300);
 		loop.run();
 	}
 	catch (const std::exception &e)
