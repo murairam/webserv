@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:08:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/01 11:47:14 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/01 16:34:43 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,13 +56,12 @@ class	Connection: public IFdHandler
 
 		// HELPER METHODS
 		std::string	buildFilePath(const LocationConfig *loc, const std::string &target);
-		bool	serveFile(const std::string &file_path);
+		bool	serveFile(const std::string &file_path, int &err_code);
 		void	sendErrorResponse(int code);
 		bool	selectServerForRequest(const HttpRequest &request);
 		void	sendSimpleResponse(int code, const std::string &content_type, const std::string &body);
 		void	sendRedirectResponse(int code, const std::string &location);
 		void	sendDirectoryListing(const std::string &dir_path, const std::string &uri);
-		void	handleFileUpload(const HttpRequest &request, const LocationConfig *loc, const std::string &method);
 		void	handleCgiRequest(const HttpRequest &request, const LocationConfig *loc, const std::string &cgi_program);
 
 		// UTILITY METHODS
