@@ -36,6 +36,7 @@ class	Listener: public IFdHandler
 		EventLoop	*_loop;
 		ConnectionManager	*_conn_mgr;
 		const ServerConfig	*_server_cfg;
+		std::vector<const ServerConfig*>	_server_configs;
 		
 	public:
 		Listener(const Listener &other);
@@ -60,6 +61,7 @@ class	Listener: public IFdHandler
 		void	disengageLoop(EventLoop &loop);
 		void	setConnectionManager(ConnectionManager *manager);
 		void	setServerConfig(const ServerConfig *cfg);
+		void	setServerConfigs(const std::vector<const ServerConfig*> &configs);
 
 		int			getFD(void) const;
 		const std::string	&getHost(void) const;

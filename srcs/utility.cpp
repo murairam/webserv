@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 15:34:00 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 21:52:52 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 18:39:55 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,20 +46,6 @@ bool	isDirectory(const std::string &path)
 		return (false);
 	return (S_ISDIR(st.st_mode) != 0);
 }
-/*
-bool	isHeaderEnd(const std::string &s)
-{
-	if (s.size() < 1 || s[0] != '\r')
-		return (false);
-	return (true);
-}
-
-bool	isHeaderLineEnd(const std::string &s)
-{
-	if (s.size() < 1 || s[s.size() - 1] != '\r')
-		return (false);
-	return (true);
-}*/
 
 int	MethodTokenToMask(const std::string &method)
 {
@@ -136,11 +122,12 @@ bool	set_nonblock_fd(int fd, std::string position)
 	return (ret);
 }
 
+/* trim removes space and tab */
 std::string	trim(const std::string &input)
 {
 	std::string::size_type	first = input.find_first_not_of(" \t");
 	if (first == std::string::npos)
-		return ("");
+		return (std::string());
 	std::string::size_type	last = input.find_last_not_of(" \t");
 	return (input.substr(first, last - first + 1));
 }
@@ -155,4 +142,108 @@ std::string	toLower(const std::string &input)
 		it++;
 	}
 	return (copy);
+}
+
+/* stripSlash removes slash, it's useful for path */
+std::string	stripSlash(const std::string &str)
+{
+	if (str.size() < 2)
+		return (str);
+	std::string	ret(str);
+	while (ret.size() > 1 && ret[ret.size() - 1] == '/')
+		ret.erase(ret.size() - 1);
+	return (ret.empty() ? std::string("/") : ret);
+}
+
+std::string	joinPath(const std::string &dir, const std::string &filename)
+{
+	if (dir.empty())
+		return (filename);;
+	if (dir[dir.size() - 1] == '/')
+		return (dir + filename);
+	return (dir + std::string("/") + filename);
+}
+
+/* This one is used while processing upload request */
+bool	sanitizeFilename(const std::string &raw, std::string &name)
+{
+	name.clear();
+	if (raw.empty())
+	{
+		name = raw;
+		return (false);
+	}
+	std::string	base(raw);
+	size_t		i = base.find_last_of("/\\");
+	if (i != std::string::npos)
+		base = base.substr(i + 1);
+	std::string	ret;
+	size_t	k = 0;
+	while (k < base.size())
+	{
+		unsigned char	c = static_cast<unsigned char>(base[k]);
+		if (std::isalnum(c) || c == '.' || c == '_' || c == '-')
+			name.push_back(static_cast<char>(c));
+		else if (c == ' ')
+			name.push_back('_');
+		k++;
+	}
+	if (name.empty())
+		return (false);
+	if (name.find("..") != std::string::npos)
+	{
+		name.clear();
+		return (false);
+	}
+	return (true);
+}
+
+bool	extractFilename(const std::string &path, const std::string &locationPrefix, std::string &filename)
+{
+	filename.clear();
+	if (path.empty())
+		return (false);
+	std::string	cleanPrefix = stripSlash(locationPrefix.empty() ? std::string("/") : locationPrefix);
+	std::string	currentPath(path);
+	if (cleanPrefix != "/")
+	{
+		if (currentPath.size() < cleanPrefix.size() || currentPath.compare(0, cleanPrefix.size(), cleanPrefix))
+		{
+			filename.clear();
+			return (false);
+		}
+		currentPath.erase(0, cleanPrefix.size());
+		if (!currentPath.empty() && currentPath[0] == '/')
+			currentPath.erase(0, 1);
+	}
+	else if (!currentPath.empty() && currentPath[0] == '/')
+		currentPath.erase(0, 1);
+	if (currentPath.empty())
+	{
+		filename.clear();
+		return (false);
+	}
+	size_t	i = currentPath.find_last_of('/');
+	if (i != std::string::npos)	
+		currentPath = currentPath.substr(i + 1);
+	filename = currentPath;
+	return (true);
+}
+
+/*	This one is used by matchLocationPath, the longest match
+	would be chosen;
+*/
+bool	matchPath(const std::string &path, const std::string &prefix)
+{
+	if (prefix.empty())
+		return (false);
+	if (prefix == "/")
+		return (true);
+	if (path.size() < prefix.size())
+		return (false);
+	if (path.compare(0, prefix.size(), prefix))
+		return (false);
+	if (path.size() == prefix.size())
+		return (true);
+	return (path[prefix.size()] == '/');
 }

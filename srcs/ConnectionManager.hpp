@@ -35,7 +35,7 @@ class	ConnectionManager
 		ConnectionManager(void);
 		~ConnectionManager(void);
 		
-		Connection	*establish(int client_fd, const std::string &server_name, const ServerConfig *server_cfg, EventLoop &loop);
+		Connection	*establish(int client_fd, const std::string &server_name, const ServerConfig *server_cfg, const std::vector<const ServerConfig*> &servers, EventLoop &loop);
 		void	drop(int fd);
 		void	drop_all(void);
 		Connection	*getConn(int fd) const;

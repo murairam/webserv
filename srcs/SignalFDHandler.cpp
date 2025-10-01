@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/20 15:19:57 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 15:39:09 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/27 16:49:18 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,7 +48,7 @@ void	SignalFDHandler::onWritable(int fd)
 
 void	SignalFDHandler::onError(int fd)
 {
-	(void)fd;
+	(void)::close(fd);
 }
 
 void	SignalFDHandler::onHangup(int fd)
@@ -58,5 +58,9 @@ void	SignalFDHandler::onHangup(int fd)
 
 void	SignalFDHandler::onTick(int fd)
 {
-	(void)fd;
+	if (!_context)
+		return;
+	EventLoop	*loop = static_cast<EventLoop*>(_context);
+	if (loop)
+		loop->touch(fd);	
 }

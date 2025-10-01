@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 14:21:00 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 14:45:10 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 20:22:51 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,7 @@
 	_template_suffix: fixed HTML suffix after dynamic parts.
 	_note_prefix: small fixed text shown before code+reason line.
 
-	Only GET/POST/DELETE are expected. no_body_response(method) returns
+	Only GET/POST/DELETE/PUT are expected. no_body_response(method) returns
 	false for these; it would return true for "HEAD" if ever used.
 */
 

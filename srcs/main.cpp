@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 20:03:38 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 01:00:49 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,7 +63,7 @@ int	main(int argc, char **argv, char **envp)
 		if (argc > 1)
 			cfg = ConfigLoader(argv[1]);
 		else
-			cfg = ConfigLoader();
+			cfg = ConfigLoader(std::string("./assets/server_cfgs/GET_ONLY.cfg"));
 #ifdef	_DEBUG
 		cfg.debug();
 #endif
@@ -77,11 +77,11 @@ int	main(int argc, char **argv, char **envp)
 		signal_handler.addSignal(SIGINT);
 		signal_handler.addSignal(SIGTERM);
 		if (!signal_handler.install())
-			throw std::runtime_error("\n---Signal handler installation failed, you will need to manually abort the webserv");
+			std::cerr<<"\n---Signal handler installation failed, you will need to manually abort the webserv";
 		signal_installed = true;
 		signal_fd = signal_handler.getReadFD();
 		if (signal_fd < 0)
-			throw std::runtime_error("\n---Signal handler installation failed, you will need to manually abort the webserv");
+			std::cerr<<"\n---Signal handler installation failed, you will need to manually abort the webserv";
 		signal_fd_handler = SignalFDHandler (&signal_handler, &shutdown_callback, &loop);
 		loop.add(signal_fd, EVENT_READ, &signal_fd_handler);
 /*	---Signal handler END---
@@ -109,10 +109,10 @@ int	main(int argc, char **argv, char **envp)
 			}
 			it++;
 		}
-		if (!registry.engage_all(loop, 128, manager))
+		if (!registry.engage_all(loop, 256, manager))
 			throw std::runtime_error("\n---Unable to open any listening socket");
 
-		loop.set_timeout(400);
+		loop.set_timeout(300);
 		loop.run();
 	}
 	catch (const std::exception &e)
@@ -137,31 +137,3 @@ int	main(int argc, char **argv, char **envp)
 */
 	return (ret);
 }
-
-/* this one is to test Get/Post/Delete Request parsing */
-/*
-int	main(int argc, char **argv, char **envp)
-{
-	try
-	{
-		(void)argc;
-		(void)argv;
-		(void)envp;
-		std::istringstream	input(GET_REQUEST);
-		std::istringstream	iss(GET_REQUEST);
-		std::string	str(iss.str());
-		std::cout<<str<<std::endl;
-		Header	test(input);
-		if (test.shouldReject())
-			return (1);
-	}
-	catch (const std::exception &e)
-	{
-		std::cerr<<e.what()<<std::endl;
-	}
-	catch (...)
-	{
-		std::cerr<<"Non-standard exception caught"<<std::endl;
-	}
-	return (0);
-}*/

@@ -76,7 +76,7 @@ namespace
 
 Listener::Listener(void)
 :IFdHandler(), _host(), _port(0), _server_name(), _fd(-1), _engaged(false),
-_loop(0), _conn_mgr(0), _server_cfg(0)
+_loop(0), _conn_mgr(0), _server_cfg(0), _server_configs()
 {}
 
 Listener::~Listener(void)
@@ -90,7 +90,7 @@ Listener::~Listener(void)
 Listener::Listener
 (const std::string &host, int port, const std::string &server_name)
 :IFdHandler(), _host(host), _port(port), _server_name(server_name),
-_fd(-1), _engaged(false), _loop(0), _conn_mgr(0), _server_cfg(0)
+_fd(-1), _engaged(false), _loop(0), _conn_mgr(0), _server_cfg(0), _server_configs()
 {}
 
 bool	Listener::listen(int backlog)
@@ -175,7 +175,9 @@ void	Listener::onReadable(int fd)
 			(void)::close(client_fd);
 			continue;
 		}
-		Connection	*conn = _conn_mgr->establish(client_fd, _server_name, _server_cfg, *_loop);
+		if (_server_configs.empty() && _server_cfg)
+			_server_configs.push_back(_server_cfg);
+		Connection	*conn = _conn_mgr->establish(client_fd, _server_name, _server_cfg, _server_configs, *_loop);
 		if (!conn)
 			(void)::close(client_fd);
 	}
@@ -257,11 +259,27 @@ void	Listener::setConnectionManager(ConnectionManager *manager)
 void	Listener::setServerConfig(const ServerConfig *cfg)
 {
 	_server_cfg = cfg;
+	if (cfg)
+	{
+		_server_name = cfg->getServerName();
+		if (_server_configs.empty())
+			_server_configs.push_back(cfg);
+	}
+}
+
+void	Listener::setServerConfigs(const std::vector<const ServerConfig*> &configs)
+{
+	_server_configs = configs;
+	if (!_server_configs.empty())
+	{
+		_server_cfg = _server_configs[0];
+		_server_name = _server_cfg->getServerName();
+	}
 }
 
 Listener::Listener(const Listener &other)
 :IFdHandler(other), _host(other._host), _port(other._port), _server_name(other._server_name),
-_fd(-1), _engaged(false), _loop(0), _conn_mgr(0), _server_cfg(0) {}
+_fd(-1), _engaged(false), _loop(0), _conn_mgr(0), _server_cfg(0), _server_configs(other._server_configs) {}
 
 Listener	&Listener::operator=(const Listener &other)
 {
@@ -277,6 +295,7 @@ Listener	&Listener::operator=(const Listener &other)
 		_loop = 0;
 		_conn_mgr = 0;
 		_server_cfg = 0;
+		_server_configs = other._server_configs;
 	}
 	return (*this);
 }

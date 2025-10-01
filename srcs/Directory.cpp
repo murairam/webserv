@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:02 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/20 13:04:49 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 01:42:26 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,7 +40,7 @@ Directory	&Directory::operator=(const Directory &other)
 Directory::~Directory(void)
 {
 	if (_dir)
-		::closedir(_dir);
+		(void)::closedir(_dir);
 }
 bool	Directory::isOpen(void) const
 {
@@ -58,7 +58,7 @@ void	Directory::ft_opendir(void)
 	{
 		_err_code = errno;
 		_err_code_set = true;
-		throw SysError("\n---opendir failed on: " + _path + ", ", _err_code);
+		std::cerr<<_path + strerror(errno)<<std::endl;;
 	}
 }
 
@@ -71,29 +71,21 @@ void	Directory::ft_closedir(void)
 {
 	if (!_dir)
 		return;
-	if (::closedir(_dir) == -1)
-	{
-		_err_code = errno;
-		_err_code_set = true;
-		throw SysError("\n---closedir failed on: " + _path + ", ", _err_code);
-	}
+	(void)::closedir(_dir);	
 	_dir = 0;
 }
 
 std::string	Directory::nextEntry(void)
 {
-	struct dirent	*entry;
+	struct dirent	*entry = 0;
 
 	if (!_dir)
 	{
 		std::cerr<<"\n---readdir on closed DIR*"<<std::strerror(errno)<<std::endl;
 		return (std::string());
 	}
-	errno = 0;
 	while (1)
 	{
-		_err_code = 0;
-		_err_code_set = false;
 		entry = ::readdir(_dir);
 		_err_code = errno;
 		if (!entry)
@@ -105,6 +97,8 @@ std::string	Directory::nextEntry(void)
 				return (std::string());
 			}
 		}
+		if (!*entry->d_name)
+			return (std::string());
 		const char	*name = entry->d_name;
 		if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
 			continue;

@@ -22,7 +22,7 @@ ConnectionManager::~ConnectionManager(void)
 	drop_all();
 }
 
-Connection	*ConnectionManager::establish(int client_fd, const std::string &server_name, const ServerConfig *server_cfg, EventLoop &loop)
+Connection	*ConnectionManager::establish(int client_fd, const std::string &server_name, const ServerConfig *server_cfg, const std::vector<const ServerConfig*> &servers, EventLoop &loop)
 {
 	try
 	{
@@ -35,7 +35,7 @@ Connection	*ConnectionManager::establish(int client_fd, const std::string &serve
 				delete existing->second;
 			_conns.erase(existing);
 		}
-		Connection	*c = new Connection(client_fd, server_name, server_cfg);
+		Connection	*c = new Connection(client_fd, server_name, server_cfg, servers);
 		c->engageLoop(loop);
 		_conns[client_fd] = c;
 		return (c);

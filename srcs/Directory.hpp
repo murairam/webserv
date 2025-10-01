@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 13:23:09 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/18 13:56:27 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 01:12:23 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,6 @@
 # define DIRECTORY_HPP
 
 # include "_headers.hpp"
-# include "SysError.hpp"
 
 /* Directory wraps opendir, readdir and closedir */
 class	Directory

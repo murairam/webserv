@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:57:27 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/28 14:58:35 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/01 13:50:19 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,11 +27,26 @@ namespace
 		(void)sig;
 	}
 
-	void	drain_pipe_once(int fd)
+void	drain_pipe(int fd)
 	{
 		char	buf[5000];
-		ssize_t	ignored = ::read(fd, buf, sizeof(buf));
-		(void)ignored;
+		while (1)
+		{
+			ssize_t	n = ::read(fd, buf, sizeof(buf));
+			if (n > 0)
+				continue;
+			if (!n)
+				break;
+			if (errno == EINTR)
+				continue;
+			if (errno == EAGAIN
+#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
+					|| errno == EWOULDBLOCK
+#endif
+			)
+				break;
+			break;
+		}
 	}
 
 	std::time_t	getTime(void)
@@ -185,7 +200,7 @@ void	EventLoop::set_timeout(unsigned timeout)
 void	EventLoop::run(void)
 {
 	while (!_should_stop)
-		this->run_once(200);
+		this->run_once(_timeout);
 }
 
 void	EventLoop::stop(void)
@@ -221,9 +236,9 @@ void	EventLoop::run_once(unsigned timeout)
 		_scratch_evs.push_back(e._events);
 		it++;
 	}
-	(void)::poll(&pfds[0], pfds.size(), timeout);
+	(void)::poll(pfds.size() ? &pfds[0] : reinterpret_cast<struct pollfd*>(0), pfds.size(), timeout);
 	std::time_t	curr_time = getTime();
-	
+
 	/* If timeout set, enforce idle timeout so no hang up*/
 	if (_timeout)
 	{
@@ -244,7 +259,6 @@ void	EventLoop::run_once(unsigned timeout)
 			}
 			it2++;
 		}
-		
 		std::vector<int>::const_iterator	it3 = to_close.begin();
 		while (it3 != to_close.end())
 		{
@@ -253,11 +267,14 @@ void	EventLoop::run_once(unsigned timeout)
 			std::map<int,Entry>::iterator	it4 = _entries.find(fd);
 			if (it4 != _entries.end())
 			{
-				IFdHandler	*handler = it4->second._handler;
-				if (handler)
-					handler->onHangup(fd);
-				(void)::close(fd);
-				_entries.erase(it4);
+				if (it4->second._handler)
+					it4->second._handler->onHangup(fd);
+				it4 = _entries.find(fd);
+				if (it4 != _entries.end())
+				{
+					(void)::close(fd);
+					_entries.erase(it4);
+				}
 			}
 		}
 	}
@@ -288,7 +305,7 @@ void	EventLoop::run_once(unsigned timeout)
 		/* wakeup pipe read end */
 		if (fd == _wakeup_rd_fd)
 		{
-			drain_pipe_once(_wakeup_rd_fd);
+			drain_pipe(_wakeup_rd_fd);
 			continue;
 		}
 
@@ -296,12 +313,16 @@ void	EventLoop::run_once(unsigned timeout)
 		if (it2 == _entries.end())
 			continue;
 		IFdHandler	*handler = it2->second._handler;
+		bool	has_error = ((re & POLLERR) || (re & POLLNVAL));
+		bool	has_hangup = (re & POLLHUP);
 		/* Check error */
-		if (((re & POLLERR) || (re & POLLNVAL)) && handler)
+		if (has_error && handler)
 			handler->onError(fd);
 		/* Check hangup */
-		if ((re & POLLHUP) && handler)
+		if (has_hangup && handler)
 			handler->onHangup(fd);
+		if (has_error || has_hangup)
+			continue;
 		/* Check readable */
 		if (re & POLLIN)
 		{
@@ -322,14 +343,22 @@ void	EventLoop::run_once(unsigned timeout)
 		}
 	}
 	/* Handlers respirate */
+	std::vector<int>	tick_fds;
+	tick_fds.reserve(_entries.size());
 	std::map<int,Entry>::iterator	it2 = _entries.begin();
 	while (it2 != _entries.end())
 	{
-		int	fd = it2->first;
-		IFdHandler	*handler = it2->second._handler;
+		tick_fds.push_back(it2->first);
 		it2++;
-		if (handler)
-			handler->onTick(fd);
+	}
+	std::vector<int>::const_iterator	tick_it = tick_fds.begin();
+	while (tick_it != tick_fds.end())
+	{
+		int	fd = *tick_it;
+		tick_it++;
+		std::map<int,Entry>::iterator	e_it = _entries.find(fd);
+		if (e_it != _entries.end() && e_it->second._handler)
+			e_it->second._handler->onTick(fd);
 	}
 }
 

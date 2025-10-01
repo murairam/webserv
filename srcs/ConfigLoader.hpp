@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 20:40:42 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/18 20:44:35 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/29 16:47:16 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,7 +36,6 @@ class	ConfigLoader
 		bool						_fatal_error;
 		bool						_root_is_folder;
 
-		int		setDefaultServer(void);
 		void	parse(std::string path);
 
 	public:

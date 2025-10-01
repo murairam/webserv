@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 15:34:07 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/21 21:52:11 by yanli            ###   ########.fr       */
+/*   Updated: 2025/09/30 18:36:36 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,4 +41,10 @@ bool	set_nonblock_fd(int fd, std::string position = std::string());
 */
 std::string	trim(const std::string &input);
 std::string	toLower(const std::string &input);
+std::string	stripSlash(const std::string &str);
+std::string	joinPath(const std::string &dir, const std::string &filename);
+bool	sanitizeFilename(const std::string &raw, std::string &name);
+bool	extractFilename(const std::string &path, const std::string &locationPrefix, std::string &filename);
+bool	matchPath(const std::string	&path, const std::string &prefix);
+
 #endif

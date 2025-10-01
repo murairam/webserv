@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequestParser.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:35:23 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/25 11:35:25 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/30 19:27:26 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ HttpRequest HttpRequestParser::parse(std::istream &input)
     if (!parseHeaders(input, request))
         return (request);  // Error already set
 
-    // Parse body (for POST requests)
+    // Parse body (for POST and PUT requests)
     if (!parseBody(input, request))
         return (request);  // Error already set
 
@@ -93,9 +93,16 @@ bool HttpRequestParser::parseRequestLine(std::istream &input, HttpRequest &reque
         return (false);
     }
 
-    // Parse URL into path and query
+    // Parse and sanitize inbound URL into path and query
     std::string path, query;
-    parseUrl(url, path, query);
+   if (!parseUrl(url, path, query))
+   {
+	setError(request, 400);
+	return (false);
+   }
+#ifdef	_DEBUG
+   std::cerr<<"\n---start of sanitized path---\n"<<path<<"\n---end of sanitized path---"<<std::endl;
+#endif
 
     // Set request data
     request.setMethod(method);
@@ -128,12 +135,16 @@ bool HttpRequestParser::parseHeaders(std::istream &input, HttpRequest &request)
 
         if (name.empty())
         {
-            setError(request, 400);
-            return (false);
+			setError(request, 400);
+			return (false);
         }
 
         // Add to general headers map
-        request.addHeader(name, value);
+		if (!request.addHeader(name, value))
+		{
+			setError(request, 400);
+			return (false);
+		}
 
         // Handle special headers that need extra processing
         std::string lower_name = toLower(name);
@@ -292,13 +303,13 @@ bool HttpRequestParser::parseFixedLengthBody(std::istream &input, HttpRequest &r
 void HttpRequestParser::parseHostHeader(const std::string &value, HttpRequest &request)
 {
     // Host header can be: "example.com" or "example.com:8080"
-    std::string host = trim(value);
+    std::string	host = trim(value);
     std::string::size_type colon_pos = host.find(':');
 
     if (colon_pos != std::string::npos)
     {
         // Extract port (we don't store it in HttpRequest for now)
-        std::string port_str = host.substr(colon_pos + 1);
+        std::string	port_str = host.substr(colon_pos + 1);
         host = host.substr(0, colon_pos);
     }
 
@@ -306,7 +317,7 @@ void HttpRequestParser::parseHostHeader(const std::string &value, HttpRequest &r
     (void)request;  // Suppress unused parameter warning
 }
 
-void HttpRequestParser::parseConnectionHeader(const std::string &value, HttpRequest &request)
+void	HttpRequestParser::parseConnectionHeader(const std::string &value, HttpRequest &request)
 {
     std::string conn = toLower(trim(value));
 
@@ -314,6 +325,12 @@ void HttpRequestParser::parseConnectionHeader(const std::string &value, HttpRequ
         request.setPersistent(false);
     else if (conn.find("keep-alive") != std::string::npos)
         request.setPersistent(true);
+	else
+	{
+		request.setPersistent(false);
+		request.setErrorCode(400);
+		request.setShouldReject(true);
+	}
 }
 
 void HttpRequestParser::parseCookieHeader(const std::string &value, HttpRequest &request)
@@ -383,13 +400,12 @@ std::string HttpRequestParser::extractHeaderValue(const std::string &line)
 
 bool HttpRequestParser::isValidMethod(const std::string &method)
 {
-    return (method == "GET" || method == "POST" || method == "DELETE" ||
-            method == "HEAD" || method == "PUT" || method == "OPTIONS");
+    return (method == "GET" || method == "POST" || method == "DELETE" || method == "PUT");
 }
 
 bool HttpRequestParser::isValidHttpVersion(const std::string &version)
 {
-    return (version == "HTTP/1.1" || version == "HTTP/1.0");
+    return (version == "HTTP/1.1");
 }
 
 void HttpRequestParser::setError(HttpRequest &request, int error_code)
@@ -398,20 +414,116 @@ void HttpRequestParser::setError(HttpRequest &request, int error_code)
     request.setErrorCode(error_code);
 }
 
-void HttpRequestParser::parseUrl(const std::string &url, std::string &path, std::string &query)
+bool HttpRequestParser::parseUrl
+(const std::string &url, std::string &path, std::string &query)
 {
-    std::string::size_type query_pos = url.find('?');
+	std::string::size_type query_pos = url.find('?');
+	std::string	raw_path;
 
-    if (query_pos == std::string::npos)
-    {
-        path = url;
-        query = "";
-    }
-    else
-    {
-        path = url.substr(0, query_pos);
-        query = (query_pos + 1 < url.size()) ? url.substr(query_pos + 1) : "";
-    }
+	if (query_pos == std::string::npos)
+	{
+		raw_path = url;
+		query.clear();
+	}
+	else
+	{
+		raw_path = url.substr(0, query_pos);
+		query = (query_pos + 1 < url.size()) ? url.substr(query_pos + 1) : "";
+	}
+	if (raw_path.empty())
+		raw_path = "/";
+	if (!raw_path.empty() && raw_path[0] != '/')
+	{
+		std::string::size_type	scheme_pos = raw_path.find("://");
+		if (scheme_pos != std::string::npos)
+		{
+			std::string::size_type	path_pos = raw_path.find('/', scheme_pos + 3);
+			if (path_pos != std::string::npos)
+				raw_path = raw_path.substr(path_pos);
+			else
+				raw_path = "/";
+		}
+	}
+	std::string	decoded_path;
+	if (!urlDecode(raw_path, decoded_path))
+		return (false);
+	return (sanitizePath(decoded_path, path));
+}
+
+bool	HttpRequestParser::urlDecode(const std::string &encoded, std::string &decoded)
+{
+	decoded.clear();
+	decoded.reserve(encoded.size());
+	size_t	i = 0;
+	while (i < encoded.size())
+	{
+		unsigned char	c = static_cast<unsigned char>(encoded[i]);
+		if (c == '%')
+		{
+			if (i + 2 >= encoded.size())
+				return (false);
+			unsigned char	c2 = static_cast<unsigned char>(encoded[i + 1]);
+			unsigned char	c3 = static_cast<unsigned char>(encoded[i + 2]);
+			if (!std::isxdigit(c2) || !std::isxdigit(c3))
+				return (false);
+			int	value = (std::isdigit(c2) ? (c2 - '0') : (((std::toupper(c2)) - 'A' + 10) * 16));
+			value += (std::isdigit(c3) ? (c3 - '0') : (std::toupper(c3) - 'A' + 10));
+			decoded += static_cast<char>(value);
+			i += 2;
+		}
+		else
+			decoded += static_cast<char>(c);
+		i++;
+	}
+	return (true);
+}
+
+bool	HttpRequestParser::sanitizePath
+(const std::string &decoded_path, std::string &sanitized)
+{
+	if (decoded_path.empty())
+	{
+		sanitized = "/";
+		return (true);
+	}
+	if (decoded_path[0] != '/')
+		return (false);
+	std::vector<std::string>	segments;
+	size_t						i = 1;
+	while (i < decoded_path.size() + 1)
+	{
+		size_t	k = decoded_path.find('/', i);
+		if (k == std::string::npos)
+			k = decoded_path.size();
+		std::string	segment = decoded_path.substr(i, k - i);
+		if (!segment.empty() && segment.find('\0') != std::string::npos)
+			return (false);
+		if (segment.empty() || segment == ".")
+		{}
+		else if (segment == "..")
+		{
+			if (segments.empty())
+				return (false);
+			segments.pop_back();
+		}
+		else
+			segments.push_back(segment);
+		if (k == decoded_path.size())
+			break;
+		i = k + 1;
+	}
+	sanitized = "/";
+	i = 0;
+	while (i < segments.size())
+	{
+		sanitized += segments[i];
+		if (i + 1 < segments.size())
+			sanitized += '/';
+		i++;
+	}
+	if (!segments.empty() && decoded_path[decoded_path.size() - 1] == '/')
+		sanitized += '/';
+	return (true);
 }
 
 // Public utility methods

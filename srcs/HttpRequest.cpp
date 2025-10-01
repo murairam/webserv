@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:19:01 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/25 11:19:03 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/30 02:29:49 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,10 +16,11 @@
 // Orthodox Canonical Form
 
 HttpRequest::HttpRequest(void)
-    : _method(""), _path(""), _query(""), _version("HTTP/1.1"),
+    : _method(""), _path(""), _query(""), _version(""),
       _headers(), _cookies(), _body(""),
       _persistent(true), _chunked(false), _content_length(-1),
-      _should_reject(false), _error_code(0)
+      _should_reject(false), _error_code(0), _header_set(false),
+	  _upload_filename()
 {
 }
 
@@ -28,7 +29,8 @@ HttpRequest::HttpRequest(const HttpRequest &other)
       _version(other._version), _headers(other._headers), _cookies(other._cookies),
       _body(other._body), _persistent(other._persistent), _chunked(other._chunked),
       _content_length(other._content_length), _should_reject(other._should_reject),
-      _error_code(other._error_code)
+      _error_code(other._error_code), _header_set(false),
+	  _upload_filename(other._upload_filename)
 {
 }
 
@@ -48,6 +50,8 @@ HttpRequest &HttpRequest::operator=(const HttpRequest &other)
         _content_length = other._content_length;
         _should_reject = other._should_reject;
         _error_code = other._error_code;
+		_header_set = other._header_set;
+		_upload_filename = other._upload_filename;
     }
     return (*this);
 }
@@ -84,6 +88,11 @@ const std::string &HttpRequest::getBody(void) const
     return (_body);
 }
 
+const std::string	&HttpRequest::getUploadFilename(void) const
+{
+	return (_upload_filename);
+}
+
 bool HttpRequest::getPersistent(void) const
 {
     return (_persistent);
@@ -111,29 +120,34 @@ int HttpRequest::getErrorCode(void) const
 
 // Setters
 
-void HttpRequest::setMethod(const std::string &method)
+void HttpRequest::setMethod(std::string method)
 {
     _method = method;
 }
 
-void HttpRequest::setPath(const std::string &path)
+void HttpRequest::setPath(std::string path)
 {
     _path = path;
 }
 
-void HttpRequest::setQuery(const std::string &query)
+void HttpRequest::setQuery(std::string query)
 {
     _query = query;
 }
 
-void HttpRequest::setVersion(const std::string &version)
+void HttpRequest::setVersion(std::string version)
 {
     _version = version;
 }
 
-void HttpRequest::setBody(const std::string &body)
+void HttpRequest::setBody(std::string body)
 {
     _body = body;
+}
+
+void	HttpRequest::setUploadFilename(std::string upload_filename)
+{
+	_upload_filename = upload_filename;
 }
 
 void HttpRequest::setPersistent(bool persistent)
@@ -163,14 +177,22 @@ void HttpRequest::setErrorCode(int code)
 
 // Header and cookie management
 
-void HttpRequest::addHeader(const std::string &key, const std::string &value)
+bool HttpRequest::addHeader(std::string key, std::string value)
 {
     std::string normalized_key = toLower(trim(key));
     if (!normalized_key.empty())
+	{
+		std::map<std::string,std::string>::const_iterator	it = _headers.find(normalized_key);
+		if (it != _headers.end())
+			return (false);
         _headers[normalized_key] = trim(value);
+		_header_set = true;
+		return (true);
+	}
+	return (false);
 }
 
-void HttpRequest::addCookie(const std::string &key, const std::string &value)
+void HttpRequest::addCookie(std::string key, std::string value)
 {
     std::string clean_key = trim(key);
     if (!clean_key.empty())

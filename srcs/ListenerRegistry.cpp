@@ -40,10 +40,22 @@ void	ListenerRegistry::prepare
 		entry._listener = Listener(endpoint.getHost(), endpoint.getPort(), server.getServerName());
 		entry._default_name = server.getServerName();
 		entry._server_cfg = &server;
+		entry._servers.push_back(&server);
 		_sockets[key] = entry;
 	}
 	else
-		(void)server;
+	{
+		SocketEntry	&existing = it->second;
+		std::vector<const ServerConfig*>::const_iterator sit = existing._servers.begin();
+		while (sit != existing._servers.end())
+		{
+			if (*sit == &server)
+				break;
+			++sit;
+		}
+		if (sit == existing._servers.end())
+			existing._servers.push_back(&server);
+	}
 }
 
 int		ListenerRegistry::engage_all(EventLoop &loop, int backlog, ConnectionManager &manager)
@@ -57,7 +69,10 @@ int		ListenerRegistry::engage_all(EventLoop &loop, int backlog, ConnectionManage
 	while (it != _sockets.end())
 	{
 		SocketEntry	&se = it->second;
+		if (!se._servers.empty())
+			se._server_cfg = se._servers[0];
 		se._listener.setConnectionManager(&manager);
+		se._listener.setServerConfigs(se._servers);
 		se._listener.setServerConfig(se._server_cfg);
 		if (se._listener.listen(backlog))
 		{

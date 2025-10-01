@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ServerConfig.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 19:37:19 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/26 14:46:26 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/09/30 18:49:46 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,34 +60,44 @@ const std::vector<LocationConfig>	&ServerConfig::getLocations(void) const
 */
 const LocationConfig *ServerConfig::matchLocation(const std::string &path) const
 {
-    if (path.empty())
-        return (0);
+	if (path.empty())
+		return (0);
 
-    size_t best_len = 0;
-    const LocationConfig *best = 0;
-    
-    for (size_t i = 0; i < _locations.size(); ++i)
-    {
-        const std::string &prefix = _locations[i].getPathPrefix();
-        const size_t plen = prefix.size();
+	const std::string		cleanPath = stripSlash(path);
+	size_t					best_len = 0;
+	const LocationConfig	*best = 0;
+	int						best_priority = 0;
+	bool					has_best = false;
+	size_t					i = 0;
 
-        if (plen == 0 || plen > path.size())
-            continue;  // Safe to continue in for-loop
-            
-        if (!path.compare(0, plen, prefix))
-        {
-            if (plen > best_len)
-            {
-                best = &_locations[i];
-                best_len = plen;
-            }
-        }
-    }
-    return (best);
+	while( i < _locations.size())
+	{
+		std::string	cleanPrefix = stripSlash(_locations[i].getPathPrefix());
+		if (cleanPrefix.empty() || !matchPath(cleanPath,cleanPrefix))
+		{
+			i++;
+			continue;
+		}
+		size_t	prefix_len = cleanPrefix.size();
+		int	priority = _locations[i].getPriority();
+		if (!has_best || prefix_len > best_len ||
+		(prefix_len == best_len && priority > best_priority))
+		{
+			best = &_locations[i];
+			best_len = prefix_len;
+			best_priority = priority;
+			has_best = true;
+		}
+		i++;
+	}
+	return (best);
 }
 
 long	ServerConfig::getBodyLimit(const LocationConfig *loc) const
 {
+#ifdef	_DEBUG
+	std::cerr<<"\nDEBUG: client max body size limit is: "<<_client_max_body_size<<std::endl;
+#endif
 	if (!loc || loc->getClientBodyLimit() < 0)
 		return (_client_max_body_size);
 	return (loc->getClientBodyLimit());
@@ -137,11 +147,11 @@ void	ServerConfig::setBodySize(long n, char c)
 	if (c == 'B')
 		_client_max_body_size = n;
 	else if (c == 'K')
-		_client_max_body_size = 1024 * n;
+		_client_max_body_size = 1024L * n;
 	else if (c == 'M')
-		_client_max_body_size = 1024 * 1024 * n;
+		_client_max_body_size = 1024L * 1024L * n;
 	else if (c == 'G')
-		_client_max_body_size = 1024 * 1024 * 1024 * n;
+		_client_max_body_size = 1024L * 1024L * 1024L * n;
 	else
 		_client_max_body_size = -1;
 }
