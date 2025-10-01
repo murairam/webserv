@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   _headers.hpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 23:18:53 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/01 13:49:59 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/01 16:22:20 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 
 #ifdef __APPLE__
 # include <sys/event.h>  /* for kqueue if we decide to use it for macOS */
+# include <poll.h>       /* poll is available on macOS too */
 #endif
 
 # if defined(__LINUX__) || defined(__linux__)

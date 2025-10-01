@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:08:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/01 11:47:14 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/01 16:21:13 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@
 # include "EventLoop.hpp"
 # include "Response.hpp"
 # include "timestring.hpp"
+# include "CGIHandler.hpp"
 
 class	EventLoop;
 
@@ -43,6 +44,7 @@ class	Connection: public IFdHandler
 		const ServerConfig	*_server;
 		std::vector<const ServerConfig*>	_available_servers;
 		int			_method;
+		CgiHandler	*_cgi;
 
 		// NEW PARSER INTEGRATION
 		void	dispatcher(void);    // Make sure this is declared
@@ -64,6 +66,7 @@ class	Connection: public IFdHandler
 		void	sendDirectoryListing(const std::string &dir_path, const std::string &uri);
 		void	handleFileUpload(const HttpRequest &request, const LocationConfig *loc, const std::string &method);
 		void	handleCgiRequest(const HttpRequest &request, const LocationConfig *loc, const std::string &cgi_program);
+		void	checkCgi(void);
 
 		// UTILITY METHODS
 		std::string	getContentType(const std::string &file_path) const;
@@ -77,7 +80,7 @@ class	Connection: public IFdHandler
 	public:
 		virtual	~Connection(void);
 		Connection(int fd, const std::string &server_name, const ServerConfig *server, const std::vector<const ServerConfig*> &servers);
-		/*	This one ensures all write/read/recv/send would be 
+		/*	This one ensures all write/read/recv/send would be
 			precedented by a poll;
 		*/
 		Connection(int fd, std::string action, std::string path, int &err_code, std::string filename = std::string());

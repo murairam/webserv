@@ -6,14 +6,20 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/01 15:39:20 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/01 16:53:14 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Connection.hpp"
+#include "CGIHandler.hpp"
 
 Connection::~Connection(void)
 {
+	if (_cgi)
+	{
+		delete _cgi;
+		_cgi = NULL;
+	}
 	if (_loop && _engaged)
 	{
 		_loop->remove(_fd);
@@ -29,7 +35,7 @@ Connection::~Connection(void)
 Connection::Connection(int fd, const std::string &server_name, const ServerConfig *server, const std::vector<const ServerConfig*> &servers)
 :_fd(fd), _loop(0), _server_name(server_name), _inbuf(),
 _outbuf(), _engaged(false), _should_close(false), _server(server),
-_available_servers(servers), _method(0)
+_available_servers(servers), _method(0), _cgi(NULL)
 {
 	(void)set_nonblock_fd_nothrow(_fd);
 	if (_available_servers.empty() && _server)
@@ -586,15 +592,90 @@ void Connection::handleFileUpload(const HttpRequest& request, const LocationConf
 
 void Connection::handleCgiRequest(const HttpRequest& request, const LocationConfig* loc, const std::string& cgi_program)
 {
+	std::string script_path = buildFilePath(loc, request.getPath());
+
 #ifdef _DEBUG
-	std::cerr << "DEBUG: CGI request detected but not implemented yet" << std::endl;
+	std::cerr << "DEBUG: CGI script path: " << script_path << std::endl;
 	std::cerr << "DEBUG: CGI program: " << cgi_program << std::endl;
-	std::cerr << "DEBUG: Request path: " << request.getPath() << std::endl;
 #endif
-	(void)request;
-	(void)loc;
-	(void)cgi_program;
-	sendSimpleResponse(501, "text/plain", "CGI not implemented yet - perfect place for CgiHandler!");
+
+	struct stat st;
+	if (stat(script_path.c_str(), &st) != 0 || access(script_path.c_str(), R_OK) != 0)
+	{
+		sendErrorResponse(404);
+		return;
+	}
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Creating CGI handler..." << std::endl;
+#endif
+
+	_cgi = new CgiHandler(request, cgi_program, script_path, loc);
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Executing CGI..." << std::endl;
+#endif
+
+	if (!_cgi->execute(*_loop))
+	{
+		delete _cgi;
+		_cgi = NULL;
+		sendErrorResponse(500);
+	}
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: CGI execution started successfully" << std::endl;
+#endif
+}
+
+void Connection::checkCgi(void)
+{
+#ifdef _DEBUG
+	std::cerr << "DEBUG: checkCgi called, _cgi=" << _cgi << std::endl;
+#endif
+
+	if (!_cgi || !_cgi->isDone())
+		return;
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: CGI is done, checking timeout..." << std::endl;
+#endif
+
+	if (_cgi->isTimeout())
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: CGI timeout detected" << std::endl;
+#endif
+		_cgi->removeFromEventLoop();
+		delete _cgi;
+		_cgi = NULL;
+		sendErrorResponse(500);
+		return;
+	}
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Getting CGI response..." << std::endl;
+#endif
+
+	queueWrite(_cgi->getResponse());
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: CGI response queued, removing from event loop..." << std::endl;
+#endif
+
+	// Remove CGI from event loop before deleting
+	_cgi->removeFromEventLoop();
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: CGI removed from event loop, deleting handler..." << std::endl;
+#endif
+
+	delete _cgi;
+	_cgi = NULL;
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: CGI handler deleted successfully" << std::endl;
+#endif
 }
 
 std::string Connection::buildFilePath(const LocationConfig *loc, const std::string &target)
@@ -605,6 +686,11 @@ std::string Connection::buildFilePath(const LocationConfig *loc, const std::stri
 	std::string base_path = loc->getAlias();
 	if (base_path.empty())
 		base_path = std::string(".");
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: buildFilePath - base_path: " << base_path << std::endl;
+	std::cerr << "DEBUG: buildFilePath - target: " << target << std::endl;
+#endif
 
 	std::string prefix = loc->getPathPrefix();
 	if (prefix.empty())
@@ -631,6 +717,11 @@ std::string Connection::buildFilePath(const LocationConfig *loc, const std::stri
 
 	if (relative_path[0] == '/')
 		relative_path.erase(0, 1);
+
+#ifdef _DEBUG
+	std::cerr << "DEBUG: buildFilePath - relative_path: " << relative_path << std::endl;
+	std::cerr << "DEBUG: buildFilePath - final result: " << joinPath(base_path, relative_path) << std::endl;
+#endif
 
 	return (joinPath(base_path, relative_path));
 }
@@ -804,6 +895,8 @@ void	Connection::onTick(int fd)
 {
 	(void)fd;
 
+	if (_cgi)
+		checkCgi();
 	if (_should_close && _outbuf.empty())
 	{
 		if (_loop && _engaged)
