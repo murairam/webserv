@@ -6,12 +6,14 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/01 18:28:52 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/02 13:39:44 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Connection.hpp"
 #include "CGIHandler.hpp"
+#include "HttpRequestParser.hpp"
+#include <cstdio>
 
 Connection::~Connection(void)
 {
@@ -162,9 +164,19 @@ void	Connection::dispatcher(void)
 		_inbuf.clear();  // Request handled successfully
 		return;
 	}
-	// If we get here, the new parser failed - this shouldn't happen now
+
+	// If we get here, check if it's just an incomplete request
+	if (!HttpRequestParser::isCompleteRequest(_inbuf))
+	{
 #ifdef _DEBUG
-	std::cerr << "ERROR: New parser failed - this should not happen!" << std::endl;
+		std::cerr << "DEBUG: Request still incomplete, keeping connection open" << std::endl;
+#endif
+		return;  // Keep connection open, wait for more data
+	}
+
+	// If we get here, the new parser failed on a complete request - this shouldn't happen now
+#ifdef _DEBUG
+	std::cerr << "ERROR: New parser failed on complete request - this should not happen!" << std::endl;
 #endif
 	_should_close = true;
 }
@@ -371,18 +383,22 @@ void	Connection::handleGetRequest(const HttpRequest& request, const LocationConf
 				}
 			}
 		}
-		// If no index file found, try autoindex
+		// If no index file found, check if autoindex should be used
 		if (!found_index) {
-			if (loc->getAutoindex()) {
+			// Only allow directory listing if path ends with '/' or if explicitly requested
+			std::string path = request.getPath();
+			bool allow_directory_listing = (path.empty() || path[path.length() - 1] == '/');
+
+			if (allow_directory_listing && loc->getAutoindex()) {
 #ifdef _DEBUG
 				std::cerr << "DEBUG: No index file found, generating directory listing" << std::endl;
 #endif
 				sendDirectoryListing(file_path, request.getPath());
 			} else {
 #ifdef _DEBUG
-				std::cerr << "DEBUG: No index file found and autoindex disabled" << std::endl;
+				std::cerr << "DEBUG: No index file found, returning 404" << std::endl;
 #endif
-				sendErrorResponse(403);  // Forbidden
+				sendErrorResponse(404);  // Not Found
 			}
 		}
 		return;
@@ -421,6 +437,24 @@ void	Connection::handlePostRequest(const HttpRequest& request, const LocationCon
 		sendErrorResponse(500);
 		return;
 	}
+
+	// Check for CGI first (before upload handling)
+	std::string extension = getFileExtension(request.getPath());
+	if (!extension.empty())
+	{
+		std::string cgi_program = loc->getCgi(extension);
+		if (!cgi_program.empty())
+		{
+#ifdef _DEBUG
+			std::cerr << "DEBUG: CGI handler found for extension " << extension
+					  << ": " << cgi_program << std::endl;
+#endif
+			handleCgiRequest(request, loc, cgi_program);
+			return;
+		}
+	}
+
+	// If no CGI handler found, try upload
 	if (loc->getUploadEnabled())
 	{
 #ifdef _DEBUG
@@ -445,20 +479,7 @@ void	Connection::handlePostRequest(const HttpRequest& request, const LocationCon
 		sendSimpleResponse(status_code, "text/plain", response_body);
 		return;
 	}
-	std::string extension = getFileExtension(request.getPath());
-	if (!extension.empty())
-	{
-		std::string cgi_program = loc->getCgi(extension);
-		if (!cgi_program.empty())
-		{
-#ifdef _DEBUG
-			std::cerr << "DEBUG: CGI handler found for extension " << extension
-					  << ": " << cgi_program << std::endl;
-#endif
-			handleCgiRequest(request, loc, cgi_program);
-			return;
-		}
-	}
+
 	std::string response_body = "POST/PUT request processed successfully";
 	sendSimpleResponse(200, "text/plain", response_body);
 }
@@ -494,7 +515,7 @@ void	Connection::handleDeleteRequest(const HttpRequest& request, const LocationC
 		return;
 	}
 
-	if (unlink(file_path.c_str()) == 0)
+	if (std::remove(file_path.c_str()) == 0)
 	{
 #ifdef _DEBUG
 		std::cerr << "DEBUG: File deleted successfully" << std::endl;
@@ -743,13 +764,16 @@ bool	Connection::serveFile(const std::string &file_path, int &err_code)
 	if (fd < 0)
 	{
 		err_code = errno;
-		if (err_code == EISDIR || ELOOP || ENAMETOOLONG || EOVERFLOW || ENXIO)
-			err_code = 400;
+		if (err_code == ENOENT || err_code == ENOTDIR)
+			err_code = 404;  // Not Found
 		else if (err_code == EACCES)
-			err_code = 403;
-		else if (err_code == ENOSR || err_code == ENFILE || err_code == EIO
-				|| EINVAL || EINTR)
-			err_code = 500;
+			err_code = 403;  // Forbidden
+		else if (err_code == EISDIR || err_code == ELOOP || err_code == ENAMETOOLONG || err_code == EOVERFLOW || err_code == ENXIO)
+			err_code = 400;  // Bad Request
+		else if (err_code == ENOSR || err_code == ENFILE || err_code == EIO || err_code == EINVAL || err_code == EINTR)
+			err_code = 500;  // Internal Server Error
+		else
+			err_code = 500;  // Default to Internal Server Error for unknown errors
 		return (false);
 	}
 	(void)::close(fd);
@@ -858,7 +882,13 @@ void	Connection::onWritable(int fd)
 		n = ::send(_fd, _outbuf.data(), static_cast<int>(_outbuf.size()), 0);
 		if (n > 0)
 			_outbuf.erase(0, static_cast<size_t>(n));
-		// If n <= 0, do nothing - poll will call us again when ready
+		else if (n < 0)
+		{
+			// Send failed - likely client disconnected
+			_should_close = true;
+			_outbuf.clear();
+		}
+		// If n == 0, do nothing - poll will call us again when ready
 		// or onError/onHangup will be called if there's a real problem
 	}
 
@@ -888,6 +918,14 @@ void	Connection::onError(int fd)
 {
 	(void)fd;
 
+	// Clean up CGI if it's running
+	if (_cgi)
+	{
+		_cgi->removeFromEventLoop();
+		delete _cgi;
+		_cgi = NULL;
+	}
+
 	if (_loop && _engaged)
 	{
 		_loop->remove(_fd);
@@ -903,6 +941,14 @@ void	Connection::onError(int fd)
 void	Connection::onHangup(int fd)
 {
 	(void)fd;
+
+	// Clean up CGI if it's running
+	if (_cgi)
+	{
+		_cgi->removeFromEventLoop();
+		delete _cgi;
+		_cgi = NULL;
+	}
 
 	if (_loop && _engaged)
 	{

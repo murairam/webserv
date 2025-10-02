@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequestParser.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:35:23 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/09/30 19:27:26 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/02 13:26:34 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -187,7 +187,17 @@ bool HttpRequestParser::parseBody(std::istream &input, HttpRequest &request)
 
     // Parse fixed-length body
     if (request.getContentLength() >= 0)
+    {
+        // Sanity check: prevent parsing extremely large bodies that could cause infinite loops
+        // The actual body size limits will be enforced by the server configuration later
+        const long MAX_PARSE_SIZE = 50 * 1024 * 1024;  // 50MB absolute maximum for parsing
+        if (request.getContentLength() > MAX_PARSE_SIZE)
+        {
+            setError(request, 413);  // Payload Too Large
+            return (false);
+        }
         return (parseFixedLengthBody(input, request));
+    }
 
     // No body
     request.setBody("");
@@ -530,8 +540,25 @@ bool	HttpRequestParser::sanitizePath
 
 bool HttpRequestParser::isCompleteRequest(const std::string &input)
 {
-    // Simple check: must contain \r\n\r\n (end of headers)
-    return (input.find("\r\n\r\n") != std::string::npos);
+    // Must contain \r\n\r\n (end of headers)
+    std::string::size_type headers_end = input.find("\r\n\r\n");
+    if (headers_end == std::string::npos)
+        return false;
+
+    // Check if this is a chunked request
+    std::string headers_only = input.substr(0, headers_end + 4);
+    std::string lower_headers = toLower(headers_only);
+
+    if (lower_headers.find("transfer-encoding: chunked") != std::string::npos)
+    {
+        // For chunked requests, check if the chunks are complete
+        // Must end with "0\r\n\r\n" or "0\n\n" sequence
+        return (input.find("0\r\n\r\n") != std::string::npos ||
+                input.find("0\n\n") != std::string::npos);
+    }
+
+    // For non-chunked requests, headers are sufficient
+    return true;
 }
 
 bool HttpRequestParser::hasValidRequestLine(const std::string &input)

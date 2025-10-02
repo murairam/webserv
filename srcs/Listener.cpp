@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Listener.cpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:11:14 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/28 14:59:09 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/02 12:33:07 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@ namespace
 		size_t			i = 0;
 		int				part = 0;
 		int				letter = 0;
-		
+
 		if (host.empty() || host == "0.0.0.0")
 		{
 			ret->s_addr = htonl(INADDR_ANY);
@@ -153,30 +153,29 @@ void	Listener::onReadable(int fd)
 		std::memset(&peer, 0, sizeof(peer));
 		len = static_cast<socklen_t>(sizeof(peer));
 		client_fd = ::accept(_fd, reinterpret_cast<struct sockaddr*>(&peer), &len);
+
+		// No errno checks - just handle the return value
+		// In non-blocking mode, accept() returns -1 when no more connections
+		// are available (EAGAIN/EWOULDBLOCK) or on error. Either way, break
+		// and let poll notify us when there's a new connection.
 		if (client_fd < 0)
-		{
-			if (errno == EAGAIN
-			#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
-				 || errno == EWOULDBLOCK
-			#endif
-			)
-				break;
-			if (errno == EINTR)
-				continue;
 			break;
-		}
+
 		if (!set_nonblock_fd(client_fd))
 		{
 			(void)::close(client_fd);
 			continue;
 		}
+
 		if (!_conn_mgr || !_loop)
 		{
 			(void)::close(client_fd);
 			continue;
 		}
+
 		if (_server_configs.empty() && _server_cfg)
 			_server_configs.push_back(_server_cfg);
+
 		Connection	*conn = _conn_mgr->establish(client_fd, _server_name, _server_cfg, _server_configs, *_loop);
 		if (!conn)
 			(void)::close(client_fd);

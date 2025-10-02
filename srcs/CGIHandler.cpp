@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/01 15:53:56 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/01 17:50:39 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/02 13:34:52 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,16 +27,8 @@ CgiHandler::CgiHandler(const HttpRequest &req, const std::string &cgi,
 
 	_env = req.toCgiEnvironment();
 
-	// Convert relative path to absolute path
-	char *abs_script = realpath(script.c_str(), NULL);
-	if (abs_script) {
-		_env["PATH_INFO"] = std::string(abs_script);
-		_env["SCRIPT_FILENAME"] = std::string(abs_script);
-		free(abs_script);
-	} else {
-		_env["PATH_INFO"] = script;
-		_env["SCRIPT_FILENAME"] = script;
-	}
+	_env["PATH_INFO"] = script;
+	_env["SCRIPT_FILENAME"] = script;
 	_env["SCRIPT_NAME"] = script;
 	_env["SERVER_SOFTWARE"] = "Webserv/1.0";
 	_env["GATEWAY_INTERFACE"] = "CGI/1.1";
@@ -177,6 +169,23 @@ void CgiHandler::onReadable(int fd)
 
 	if (n > 0)
 	{
+		// Safety check: prevent output buffer from growing too large
+		if (_output.size() + n > 50 * 1024 * 1024) // 50MB limit
+		{
+			// CGI output too large - terminate the process
+			if (_pid > 0)
+			{
+				kill(_pid, SIGKILL);
+				waitpid(_pid, NULL, 0);
+				_pid = -1;
+			}
+			close(fd);
+			_stdout_pipe[0] = -1;
+			_done = true;
+			_status = 500; // Internal Server Error
+			return;
+		}
+
 		_output.append(buf, n);
 		if (!_headers_parsed)
 			parseHeaders();
