@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/02 13:39:44 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/02 14:05:02 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -660,15 +660,29 @@ void	Connection::handleCgiRequest(const HttpRequest& request, const LocationConf
 
 	_cgi = new CgiHandler(request, cgi_program, script_path, loc);
 
+	// Verify CGI handler was created successfully
+	if (!_cgi)
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Failed to create CGI handler" << std::endl;
+#endif
+		sendErrorResponse(500);
+		return;
+	}
+
 #ifdef _DEBUG
 	std::cerr << "DEBUG: Executing CGI..." << std::endl;
 #endif
 
 	if (!_cgi->execute(*_loop))
 	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: CGI execution failed" << std::endl;
+#endif
 		delete _cgi;
 		_cgi = NULL;
 		sendErrorResponse(500);
+		return;
 	}
 
 #ifdef _DEBUG
@@ -682,13 +696,29 @@ void Connection::checkCgi(void)
 	std::cerr << "DEBUG: checkCgi called, _cgi=" << _cgi << std::endl;
 #endif
 
-	if (!_cgi || !_cgi->isDone())
+	// First check: ensure _cgi exists
+	if (!_cgi)
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: checkCgi - _cgi is NULL, returning" << std::endl;
+#endif
 		return;
+	}
+
+	// Second check: ensure _cgi is done (this also validates _cgi is still valid)
+	if (!_cgi->isDone())
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: checkCgi - CGI not done yet, returning" << std::endl;
+#endif
+		return;
+	}
 
 #ifdef _DEBUG
 	std::cerr << "DEBUG: CGI is done, checking timeout..." << std::endl;
 #endif
 
+	// Check timeout
 	if (_cgi->isTimeout())
 	{
 #ifdef _DEBUG

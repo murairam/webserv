@@ -6,7 +6,7 @@
 /*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:35:23 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/02 13:26:34 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/02 14:16:42 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,10 @@ HttpRequest HttpRequestParser::parse(std::istream &input)
     // Parse headers (Host: example.com, etc.)
     if (!parseHeaders(input, request))
         return (request);  // Error already set
+
+    // Check if an error was set during header parsing (e.g., Content-Length too large)
+    if (request.getErrorCode() != 0)
+        return (request);  // Error already set during header parsing
 
     // Parse body (for POST and PUT requests)
     if (!parseBody(input, request))
@@ -375,6 +379,16 @@ void HttpRequestParser::parseContentLengthHeader(const std::string &value, HttpR
         return;
 
     long length = std::strtol(length_str.c_str(), NULL, 10);
+
+    // Immediate validation: reject requests with Content-Length > 50MB
+    // This prevents infinite loops and massive memory consumption
+    const long MAX_CONTENT_LENGTH = 50 * 1024 * 1024;  // 50MB absolute maximum
+    if (length > MAX_CONTENT_LENGTH)
+    {
+        setError(request, 413);  // Payload Too Large
+        return;
+    }
+
     request.setContentLength(length);
 }
 
