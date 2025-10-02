@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/02 14:40:23 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/02 16:55:36 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -604,6 +604,7 @@ void Connection::sendDirectoryListing(const std::string& dir_path, const std::st
 	std::cerr << "DEBUG: Generating directory listing for: " << dir_path << "\nDEBUG uri is: "<<uri<<std::endl;
 #endif
 	Response response = Response::createDirectoryListing(dir_path, uri);
+	response.setHeader("Connection", _should_close ? "close" : "keep-alive");
 	queueWrite(response.serialize());
 	requestClose();
 }
@@ -614,7 +615,6 @@ void	Connection::handleCgiRequest(const HttpRequest& request, const LocationConf
 #ifdef _DEBUG
 	std::cerr<<"DEBUG: CGI script path: "<<script_path<<std::endl;
 #endif
-
 
 	struct stat st;
 	if (stat(script_path.c_str(), &st) != 0 || access(script_path.c_str(), R_OK) != 0)

@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 13:13:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/30 01:00:49 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/02 16:49:58 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -109,7 +109,7 @@ int	main(int argc, char **argv, char **envp)
 			}
 			it++;
 		}
-		if (!registry.engage_all(loop, 256, manager))
+		if (!registry.engage_all(loop, SOMAXCONN, manager))
 			throw std::runtime_error("\n---Unable to open any listening socket");
 
 		loop.set_timeout(300);
