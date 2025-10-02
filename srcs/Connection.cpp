@@ -3,22 +3,20 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/02 14:05:02 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/02 14:40:23 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Connection.hpp"
-#include "CGIHandler.hpp"
-#include "HttpRequestParser.hpp"
-#include <cstdio>
 
 Connection::~Connection(void)
 {
 	if (_cgi)
 	{
+		_cgi->removeFromEventLoop();
 		delete _cgi;
 		_cgi = NULL;
 	}
@@ -37,7 +35,7 @@ Connection::~Connection(void)
 Connection::Connection(int fd, const std::string &server_name, const ServerConfig *server, const std::vector<const ServerConfig*> &servers)
 :_fd(fd), _loop(0), _server_name(server_name), _inbuf(),
 _outbuf(), _engaged(false), _should_close(false), _server(server),
-_available_servers(servers), _method(0), _cgi(NULL)
+_available_servers(servers), _method(0), _cgi(0)
 {
 	(void)set_nonblock_fd_nothrow(_fd);
 	if (_available_servers.empty() && _server)
@@ -225,6 +223,9 @@ bool Connection::handleRequestWithNewParser(void)
 		else
 			_should_close = false;
 		// Successful parse - handle the request
+		#ifdef	_DEBUG
+		std::cerr<<"Server_name for the current connection is: "<<_server_name<<std::endl;
+		#endif
 		handleParsedRequest(request);
 		return true;  // Successfully handled
 	}
@@ -383,23 +384,26 @@ void	Connection::handleGetRequest(const HttpRequest& request, const LocationConf
 				}
 			}
 		}
-		// If no index file found, check if autoindex should be used
-		if (!found_index) {
+		// If no index file found, try autoindex
+		if (!found_index)
+		{
 			// Only allow directory listing if path ends with '/' or if explicitly requested
-			std::string path = request.getPath();
-			bool allow_directory_listing = (path.empty() || path[path.length() - 1] == '/');
-
-			if (allow_directory_listing && loc->getAutoindex()) {
+		std::string path = request.getPath();
+		bool allow_directory_listing = (path.empty() || path[path.length() - 1] == '/');
+		if (allow_directory_listing && loc->getAutoindex())
+		{
 #ifdef _DEBUG
-				std::cerr << "DEBUG: No index file found, generating directory listing" << std::endl;
+			std::cerr << "DEBUG: No index file found, generating directory listing" << std::endl;
 #endif
-				sendDirectoryListing(file_path, request.getPath());
-			} else {
+			sendDirectoryListing(file_path, request.getPath());
+		}
+		else
+		{
 #ifdef _DEBUG
-				std::cerr << "DEBUG: No index file found, returning 404" << std::endl;
+			std::cerr << "DEBUG: No index file found, returning 404" << std::endl;
 #endif
 				sendErrorResponse(404);  // Not Found
-			}
+		}
 		}
 		return;
 	}
@@ -437,7 +441,6 @@ void	Connection::handlePostRequest(const HttpRequest& request, const LocationCon
 		sendErrorResponse(500);
 		return;
 	}
-
 	// Check for CGI first (before upload handling)
 	std::string extension = getFileExtension(request.getPath());
 	if (!extension.empty())
@@ -453,8 +456,6 @@ void	Connection::handlePostRequest(const HttpRequest& request, const LocationCon
 			return;
 		}
 	}
-
-	// If no CGI handler found, try upload
 	if (loc->getUploadEnabled())
 	{
 #ifdef _DEBUG
@@ -479,7 +480,6 @@ void	Connection::handlePostRequest(const HttpRequest& request, const LocationCon
 		sendSimpleResponse(status_code, "text/plain", response_body);
 		return;
 	}
-
 	std::string response_body = "POST/PUT request processed successfully";
 	sendSimpleResponse(200, "text/plain", response_body);
 }
@@ -515,7 +515,7 @@ void	Connection::handleDeleteRequest(const HttpRequest& request, const LocationC
 		return;
 	}
 
-	if (std::remove(file_path.c_str()) == 0)
+	if (unlink(file_path.c_str()) == 0)
 	{
 #ifdef _DEBUG
 		std::cerr << "DEBUG: File deleted successfully" << std::endl;
@@ -536,7 +536,7 @@ void	Connection::handleDeleteRequest(const HttpRequest& request, const LocationC
 		sendErrorResponse(400);
 }
 
-bool	Connection::selectServerForRequest(const HttpRequest& request)
+bool	Connection::selectServerForRequest(const HttpRequest &request)
 {
 	if (_available_servers.empty())
 		return (true);
@@ -546,8 +546,8 @@ bool	Connection::selectServerForRequest(const HttpRequest& request)
 		sendErrorResponse(400);
 		return (false);
 	}
-	std::string host = trim(host_header);
-	std::string::size_type colon = host.find(':');
+	std::string	host = trim(host_header);
+	std::string::size_type	colon = host.find(':');
 	if (colon != std::string::npos)
 		host = host.substr(0, colon);
 	host = toLower(host);
@@ -573,7 +573,7 @@ bool	Connection::selectServerForRequest(const HttpRequest& request)
 }
 
 // Helper methods
-void Connection::sendSimpleResponse(int code, const std::string& content_type, const std::string& body)
+void	Connection::sendSimpleResponse(int code, const std::string &content_type, const std::string &body)
 {
 #ifdef _DEBUG
 	std::cerr << "DEBUG: Sending simple response - Code: " << code
@@ -582,26 +582,18 @@ void Connection::sendSimpleResponse(int code, const std::string& content_type, c
 	std::ostringstream oss;
 	oss << body.length();
 	std::string response =
-		"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\n"
-		"Content-Type: " + content_type + "\r\n"
-		"Content-Length: " + oss.str() + "\r\n"
-		"Connection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") +
-		"\r\n" + body;
+		"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\nDate: " + getTimeString() +"\r\nContent-Type: "  + content_type + "\r\n" + "Content-Length: " + oss.str() + "\r\n" + "Connection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + body;
 	queueWrite(response);
 }
 
-void Connection::sendRedirectResponse(int code, const std::string& location)
+void	Connection::sendRedirectResponse(int code, const std::string &location)
 {
 #ifdef _DEBUG
-	std::cerr << "DEBUG: Sending redirect response - Code: " << code
-			  << ", Location: " << location << std::endl;
+	std::cerr << "DEBUG: Sending redirect response - Code: "<<code<< ", Location: " << location << std::endl;
 #endif
 
 	std::string response =
-		"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\n"
-		"Location: " + location + "\r\n"
-		"Content-Length: 0\r\n"
-		"Connection: " + (!_should_close ? "keep-alive\r\n\r\n" : "close\r\n\r\n");
+		"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\nDate: " + getTimeString() + "\r\nLocation: " + location + "\r\n" + "Content-Length: 0\r\n" + "Connection: " + (!_should_close ? "keep-alive\r\n\r\n" : "close\r\n\r\n");
 
 	queueWrite(response);
 }
@@ -609,43 +601,20 @@ void Connection::sendRedirectResponse(int code, const std::string& location)
 void Connection::sendDirectoryListing(const std::string& dir_path, const std::string& uri)
 {
 #ifdef _DEBUG
-	std::cerr << "DEBUG: Generating directory listing for: " << dir_path << "\nDEBUG uri is: "<<std::endl;
+	std::cerr << "DEBUG: Generating directory listing for: " << dir_path << "\nDEBUG uri is: "<<uri<<std::endl;
 #endif
 	Response response = Response::createDirectoryListing(dir_path, uri);
 	queueWrite(response.serialize());
 	requestClose();
 }
-/*
-void Connection::handleFileUpload(const HttpRequest& request, const LocationConfig* loc, const std::string &method)
-{
-#ifdef _DEBUG
-	std::cerr << "DEBUG: Handling file upload, upload path: " << loc->getAlias() << std::endl;
-	std::cerr << "DEBUG: Upload body size: " << request.getBody().length() << " bytes" << std::endl;
-	std::cerr << "DEBUG: Upload content-type: " << request.getHeader("content-type") << std::endl;
-#endif
-	std::string	response_body;
-	int	status_code = 0;
-	if (!uploadFile(request, loc, response_body, status_code, method))
-	{
-#ifdef _DEBUG
-        std::cerr<<"DEBUG: File upload failed"<<std::endl;
-#endif
-		if (status_code < 1)
-			status_code = 500;
-		sendErrorResponse(status_code);
-        return;
-	}
-    sendSimpleResponse(201, "text/plain", response_body);
-}*/
 
 void	Connection::handleCgiRequest(const HttpRequest& request, const LocationConfig* loc, const std::string& cgi_program)
 {
-	std::string script_path = buildFilePath(loc, request.getPath());
-
+	std::string	script_path = buildFilePath(loc, request.getPath());
 #ifdef _DEBUG
-	std::cerr << "DEBUG: CGI script path: " << script_path << std::endl;
-	std::cerr << "DEBUG: CGI program: " << cgi_program << std::endl;
+	std::cerr<<"DEBUG: CGI script path: "<<script_path<<std::endl;
 #endif
+
 
 	struct stat st;
 	if (stat(script_path.c_str(), &st) != 0 || access(script_path.c_str(), R_OK) != 0)
@@ -658,14 +627,21 @@ void	Connection::handleCgiRequest(const HttpRequest& request, const LocationConf
 	std::cerr << "DEBUG: Creating CGI handler..." << std::endl;
 #endif
 
-	_cgi = new CgiHandler(request, cgi_program, script_path, loc);
-
-	// Verify CGI handler was created successfully
-	if (!_cgi)
+	try
 	{
-#ifdef _DEBUG
-		std::cerr << "DEBUG: Failed to create CGI handler" << std::endl;
-#endif
+		_cgi = new CgiHandler(request, cgi_program, script_path, loc);
+	}
+	catch (const std::exception &e)
+	{
+		std::cerr<<"Unable to create CGI Handler: "<<e.what()<<std::endl;
+		_cgi = NULL;
+		sendErrorResponse(500);
+		return;
+	}
+	catch (...)
+	{
+		std::cerr<<"Non-standard exception caught"<<std::endl;
+		_cgi = NULL;
 		sendErrorResponse(500);
 		return;
 	}
@@ -673,18 +649,12 @@ void	Connection::handleCgiRequest(const HttpRequest& request, const LocationConf
 #ifdef _DEBUG
 	std::cerr << "DEBUG: Executing CGI..." << std::endl;
 #endif
-
 	if (!_cgi->execute(*_loop))
 	{
-#ifdef _DEBUG
-		std::cerr << "DEBUG: CGI execution failed" << std::endl;
-#endif
 		delete _cgi;
 		_cgi = NULL;
 		sendErrorResponse(500);
-		return;
 	}
-
 #ifdef _DEBUG
 	std::cerr << "DEBUG: CGI execution started successfully" << std::endl;
 #endif
@@ -696,29 +666,13 @@ void Connection::checkCgi(void)
 	std::cerr << "DEBUG: checkCgi called, _cgi=" << _cgi << std::endl;
 #endif
 
-	// First check: ensure _cgi exists
-	if (!_cgi)
-	{
-#ifdef _DEBUG
-		std::cerr << "DEBUG: checkCgi - _cgi is NULL, returning" << std::endl;
-#endif
+	if (!_cgi || !_cgi->isDone())
 		return;
-	}
-
-	// Second check: ensure _cgi is done (this also validates _cgi is still valid)
-	if (!_cgi->isDone())
-	{
-#ifdef _DEBUG
-		std::cerr << "DEBUG: checkCgi - CGI not done yet, returning" << std::endl;
-#endif
-		return;
-	}
 
 #ifdef _DEBUG
 	std::cerr << "DEBUG: CGI is done, checking timeout..." << std::endl;
 #endif
 
-	// Check timeout
 	if (_cgi->isTimeout())
 	{
 #ifdef _DEBUG
@@ -763,6 +717,10 @@ std::string	Connection::buildFilePath(const LocationConfig *loc, const std::stri
 	std::string base_path = loc->getAlias();
 	if (base_path.empty())
 		base_path = std::string(".");
+#ifdef _DEBUG
+	std::cerr << "DEBUG: buildFilePath - base_path: " << base_path << std::endl;
+	std::cerr << "DEBUG: buildFilePath - target: " << target << std::endl;
+#endif
 	std::string prefix = loc->getPathPrefix();
 	if (prefix.empty())
 		prefix = "/";
@@ -785,13 +743,17 @@ std::string	Connection::buildFilePath(const LocationConfig *loc, const std::stri
 	}
 	if (relative_path[0] == '/')
 		relative_path.erase(0, 1);
+#ifdef _DEBUG
+	std::cerr << "DEBUG: buildFilePath - relative_path: " << relative_path << std::endl;
+	std::cerr << "DEBUG: buildFilePath - final result: " << joinPath(base_path, relative_path) << std::endl;
+#endif
 	return (joinPath(base_path, relative_path));
 }
 
 bool	Connection::serveFile(const std::string &file_path, int &err_code)
 {
 	int	fd = ::open(file_path.c_str(), O_NOFOLLOW | O_RDONLY | O_NONBLOCK);
-	if (fd < 0)
+if (fd < 0)
 	{
 		err_code = errno;
 		if (err_code == ENOENT || err_code == ENOTDIR)
@@ -824,12 +786,7 @@ bool	Connection::serveFile(const std::string &file_path, int &err_code)
 	// Build and send response
 	std::ostringstream oss;
 	oss << content.length();
-	std::string response =
-		"HTTP/1.1 200 OK\r\n"
-		"Content-Type: " + content_type + "\r\n"
-		"Content-Length: " + oss.str() + "\r\n"
-		"Connection: " + (!_should_close ? "keep-alive\r\n" : "close\r\n") +
-		"\r\n" + content;
+	std::string response = std::string("HTTP/1.1 200 OK\r\nDate: " + getTimeString() + "\r\nContent-Type: " + content_type + "\r\n" + "Content-Length: " + oss.str() + "\r\n" + +"Connection: " + (!_should_close ? "keep-alive\r\n" : "close\r\n") + "\r\n" + content);
 	queueWrite(response);
 	return true;
 }
@@ -851,7 +808,7 @@ void Connection::sendErrorResponse(int code)
 			buffer << file.rdbuf();
 			std::string body = buffer.str();
 			std::string response =
-			"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\n" + "Content-Type: text/html\r\n" + 	"Content-Length: " + intToString(body.size()) + "\r\n" + 	"Connection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + body;
+			"HTTP/1.1 " + intToString(code) + " " +  CodePage::getInstance().getReason(code) + "\r\nDate: " + getTimeString() + "\r\nContent-Type: text/html\r\nContent-Length: " + intToString(body.size()) + "\r\nConnection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + body;
 			queueWrite(response);
 			return;
 		}
@@ -859,7 +816,7 @@ void Connection::sendErrorResponse(int code)
 	else
 	{
 		std::string response =
-			"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\n" + "Content-Type: text/html\r\n" + 	"Content-Length: " + intToString(CodePage::getInstance().getCodePage(code).size()) + "\r\n" + 	"Connection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + CodePage::getInstance().getCodePage(code);
+			"HTTP/1.1 " + intToString(code) + " " +  CodePage::getInstance().getReason(code) + "\r\nDate: " + getTimeString() + "\r\nContent-Type: text/html\r\nContent-Length: " + intToString(CodePage::getInstance().getCodePage(code).size()) + "\r\nConnection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + CodePage::getInstance().getCodePage(code);
 		queueWrite(response);
 	}
 }
@@ -902,6 +859,7 @@ void	Connection::onWritable(int fd)
 {
 	ssize_t	n;
 	int	events = EVENT_READ;
+	bool	should_drop = false;
 	(void)fd;
 
 	if (!_outbuf.empty())
@@ -914,21 +872,26 @@ void	Connection::onWritable(int fd)
 			_outbuf.erase(0, static_cast<size_t>(n));
 		else if (n < 0)
 		{
-			// Send failed - likely client disconnected
-			_should_close = true;
-			_outbuf.clear();
+			if (errno != EAGAIN
+#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
+				&& errno != EWOULDBLOCK
+#endif
+			)
+			{
+				this->onError(_fd);
+				_outbuf.clear();
+				should_drop = true;
+			}
 		}
-		// If n == 0, do nothing - poll will call us again when ready
-		// or onError/onHangup will be called if there's a real problem
 	}
-
+	if (should_drop)
+		return;
 	if (_loop && _engaged)
 	{
 		if (!_outbuf.empty())
 			events = events | EVENT_WRITE;
 		_loop->set_events(_fd, events);
 	}
-
 	if (_should_close && _outbuf.empty())
 	{
 		if (_loop && _engaged)
@@ -948,14 +911,12 @@ void	Connection::onError(int fd)
 {
 	(void)fd;
 
-	// Clean up CGI if it's running
 	if (_cgi)
 	{
 		_cgi->removeFromEventLoop();
 		delete _cgi;
 		_cgi = NULL;
 	}
-
 	if (_loop && _engaged)
 	{
 		_loop->remove(_fd);
@@ -972,14 +933,12 @@ void	Connection::onHangup(int fd)
 {
 	(void)fd;
 
-	// Clean up CGI if it's running
 	if (_cgi)
 	{
 		_cgi->removeFromEventLoop();
 		delete _cgi;
 		_cgi = NULL;
 	}
-
 	if (_loop && _engaged)
 	{
 		_loop->remove(_fd);
