@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:08:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/01 18:28:35 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/03 10:17:38 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@
 # include "EventLoop.hpp"
 # include "Response.hpp"
 # include "timestring.hpp"
-# include "CGIHandler.hpp"
+# include "CgiHandler.hpp"
 
 class	EventLoop;
 
@@ -63,6 +63,7 @@ class	Connection: public IFdHandler
 		bool	selectServerForRequest(const HttpRequest &request);
 		void	sendSimpleResponse(int code, const std::string &content_type, const std::string &body);
 		void	sendRedirectResponse(int code, const std::string &location);
+		std::string	resolveRedirectLocation(const std::string &target, const HttpRequest &request) const;
 		void	sendDirectoryListing(const std::string &dir_path, const std::string &uri);
 		void	handleCgiRequest(const HttpRequest &request, const LocationConfig *loc, const std::string &cgi_program);
 		void	checkCgi(void);
@@ -79,7 +80,7 @@ class	Connection: public IFdHandler
 	public:
 		virtual	~Connection(void);
 		Connection(int fd, const std::string &server_name, const ServerConfig *server, const std::vector<const ServerConfig*> &servers);
-		/*	This one ensures all write/read/recv/send would be
+		/*	This one ensures all write/read/recv/send would be 
 			precedented by a poll;
 		*/
 		Connection(int fd, std::string action, std::string path, int &err_code, std::string filename = std::string());

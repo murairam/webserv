@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/02 16:55:36 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/03 10:53:39 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -278,8 +278,10 @@ std::cerr << "DEBUG: matchLocation returned" << std::endl;
 std::cerr << "DEBUG: Found location match, prefix: " << loc->getPathPrefix() << std::endl;
 #endif
 
-	if (loc->getRedirectCode() > 0) {
-		sendRedirectResponse(loc->getRedirectCode(), loc->getRedirectTarget());
+	if (loc->getRedirectCode() > 0)
+	{
+		sendRedirectResponse(loc->getRedirectCode(),
+		resolveRedirectLocation(loc->getRedirectTarget(), request));
 		return;
 	}
 
@@ -336,7 +338,7 @@ void	Connection::handleGetRequest(const HttpRequest& request, const LocationConf
 		std::cerr << "DEBUG: Redirect configured, code: " << loc->getRedirectCode()
 				  << ", target: " << loc->getRedirectTarget() << std::endl;
 #endif
-		std::string location = loc->getRedirectTarget();
+		std::string location = resolveRedirectLocation(loc->getRedirectTarget(), request);
 		sendRedirectResponse(loc->getRedirectCode(), location);
 		return;
 	}
@@ -586,6 +588,65 @@ void	Connection::sendSimpleResponse(int code, const std::string &content_type, c
 	queueWrite(response);
 }
 
+std::string	Connection::resolveRedirectLocation(const std::string &target, const HttpRequest &request) const
+{
+	if (target.empty())
+		return (target);
+	std::string	resolved = target;
+	size_t	scheme_pos = target.find("://");
+	if (scheme_pos != std::string::npos)
+	{
+		size_t	domain_start = scheme_pos + 3;
+		size_t	query_pos = target.find('?', domain_start);
+		size_t	path_pos = target.find('/', domain_start);
+		if (query_pos != std::string::npos && (path_pos == std::string::npos || query_pos < path_pos))
+			path_pos = std::string::npos;
+		bool	has_query = (query_pos != std::string::npos);
+		bool	has_path = (path_pos != std::string::npos);
+		if (!has_path)
+		{
+			std::string	path = request.getPath();
+			if (path.empty())
+				path = std::string("/");
+			else if (path[0] != '/')
+				path.insert(path.begin(), '/');
+			resolved += path;
+		}
+		else
+		{
+			std::string	path_fragment = target.substr(path_pos, has_query ? (query_pos - path_pos) : (std::string::npos));
+			if (path_fragment == "/")
+			{
+				std::string	path = request.getPath();
+				if (path.empty())
+					path = "/";
+				if (resolved.empty() || resolved[resolved.size() - 1] != '/')
+					resolved += '/';
+				if (path.size() > 1)
+				{
+					if (!path.empty() && path[0] == '/')
+						path.erase(0, 1);
+					resolved += path;
+				}
+			}
+		}
+		if (!has_query && !request.getQuery().empty())
+		{
+			resolved += '?';
+			resolved += request.getQuery();
+		}
+		return (resolved);
+	}
+	if (!request.getQuery().empty() && target.find('?') == std::string:: npos)
+	{
+		std::string	relative = target;
+		relative += '?';
+		relative += request.getQuery();
+		return (relative);
+	}
+	return (target);
+}
+
 void	Connection::sendRedirectResponse(int code, const std::string &location)
 {
 #ifdef _DEBUG
@@ -662,17 +723,29 @@ void	Connection::handleCgiRequest(const HttpRequest& request, const LocationConf
 
 void Connection::checkCgi(void)
 {
+	// First check: ensure _cgi exists
+	if (!_cgi)
+	{
 #ifdef _DEBUG
-	std::cerr << "DEBUG: checkCgi called, _cgi=" << _cgi << std::endl;
+		std::cerr << "DEBUG: checkCgi - _cgi is NULL, returning" << std::endl;
 #endif
-
-	if (!_cgi || !_cgi->isDone())
 		return;
+	}
+
+	// Second check: ensure _cgi is done (this also validates _cgi is still valid)
+	if (!_cgi->isDone())
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: checkCgi - CGI not done yet, returning" << std::endl;
+#endif
+		return;
+	}
 
 #ifdef _DEBUG
 	std::cerr << "DEBUG: CGI is done, checking timeout..." << std::endl;
 #endif
 
+	// Check timeout
 	if (_cgi->isTimeout())
 	{
 #ifdef _DEBUG

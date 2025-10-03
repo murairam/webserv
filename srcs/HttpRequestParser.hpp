@@ -56,6 +56,8 @@ private:
 	static bool	isValidMethod(const std::string &method);
 	static bool	isValidHttpVersion(const std::string &version);
 	static void	setError(HttpRequest &request, int error_code);
+	static bool	hasCompleteChunkedBody(const std::string &body);
+	static bool	hasCompleteFixedLengthBody(const std::string &body, long length);
 
 	// URL parsing utilities
 	static bool	parseUrl(const std::string &url, std::string &path, std::string &query);
