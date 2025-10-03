@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/03 10:53:39 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/03 15:08:30 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -358,10 +358,10 @@ void	Connection::onReadable(int fd)
 
 void	Connection::dispatcher(void)
 {
-#ifdef _DEBUG
+#ifdef _DEBUG2
 	std::cerr<<"\n=== CONNECTION DISPATCHER START ===\n"
 	<<"Input buffer size:"<<_inbuf.size()<<" bytes"
-	<<"\n---start of request---\n"<<_inbuf<<"---end of request---"<<std::endl;
+	<<"\n---start of request---\n"<<_inbuf<<"\n---end of request---"<<std::endl;
 #endif
 	_should_close = false;
 	if (_inbuf.empty())
@@ -407,7 +407,7 @@ bool Connection::handleRequestWithNewParser(void)
 		// Check if we have a complete request
 		if (!HttpRequestParser::isCompleteRequest(_inbuf))
 		{
-#ifdef _DEBUG
+#ifdef _DEBUG2
 			std::cerr << "DEBUG: Incomplete request, waiting for more data" << std::endl;
 #endif
 			return false;  // Wait for more data

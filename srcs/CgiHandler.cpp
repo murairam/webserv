@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/02 12:59:07 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/02 16:43:45 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/03 15:03:44 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,12 +26,14 @@ CgiHandler::CgiHandler(const HttpRequest &req, const std::string &cgi,
 	_stdout_pipe[0] = _stdout_pipe[1] = -1;
 
 	_env = req.toCgiEnvironment();
-
+#ifdef	_DEBUG
+	std::cerr<<"The content of the script being sent to cgi is: "<<script<<std::endl;
+#endif
 	_env["PATH_INFO"] = script;
-	_env["SCRIPT_FILENAME"] = script;
+/*	_env["SCRIPT_FILENAME"] = script;
 	_env["SCRIPT_NAME"] = script;
 	_env["SERVER_SOFTWARE"] = "Webserv/1.0";
-	_env["GATEWAY_INTERFACE"] = "CGI/1.1";
+	_env["GATEWAY_INTERFACE"] = "CGI/1.1";*/
 	_env["SERVER_PROTOCOL"] = "HTTP/1.1";
 	_env["REDIRECT_STATUS"] = "200";  // Required for PHP CGI security
 
