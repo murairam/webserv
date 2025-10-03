@@ -25,7 +25,7 @@ SRCS_FILES		= main.cpp Endpoint.cpp LocationConfig.cpp ServerConfig.cpp \
 				IFdHandler.cpp Listener.cpp ListenerRegistry.cpp \
 				Connection.cpp ConnectionManager.cpp \
 				Response.cpp SignalHandler.cpp SignalFDHandler.cpp \
-				HttpRequest.cpp HttpRequestParser.cpp CGIHandler.cpp \
+				HttpRequest.cpp HttpRequestParser.cpp CgiHandler.cpp \
 
 SRCS			= $(addprefix $(SRCS_DIR)/,$(SRCS_FILES))
 

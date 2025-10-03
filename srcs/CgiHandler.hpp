@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   CGIHandler.hpp                                     :+:      :+:    :+:   */
+/*   CgiHandler.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/10/01 15:53:42 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/01 16:52:42 by mmiilpal         ###   ########.fr       */
+/*   Created: 2025/10/02 12:58:51 by yanli             #+#    #+#             */
+/*   Updated: 2025/10/02 13:43:42 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,11 +16,11 @@
 # include "_headers.hpp"
 # include "IFdHandler.hpp"
 
-class EventLoop;
-class HttpRequest;
-class LocationConfig;
+class	EventLoop;
+class	HttpRequest;
+class	LocationConfig;
 
-class CgiHandler : public IFdHandler
+class	CgiHandler: public IFdHandler
 {
 	private:
 		int			_stdin_pipe[2];
@@ -32,14 +32,14 @@ class CgiHandler : public IFdHandler
 		bool		_headers_parsed;
 		bool		_done;
 		int			_status;
-		std::map<std::string, std::string> _headers;
+		std::map<std::string,std::string>	_headers;
 		std::string	_response_body;
 		EventLoop	*_loop;
 		time_t		_start;
 		std::string	_cgi_path;
 		std::string	_script;
 		std::string	_workdir;
-		std::map<std::string, std::string> _env;
+		std::map<std::string,std::string>	_env;
 
 		void	closePipes(void);
 		char	**buildEnv(void) const;
@@ -48,11 +48,10 @@ class CgiHandler : public IFdHandler
 
 		CgiHandler(void);
 		CgiHandler(const CgiHandler &other);
-		CgiHandler &operator=(const CgiHandler &other);
-
+		CgiHandler	&operator=(const CgiHandler &other);
+	
 	public:
-		CgiHandler(const HttpRequest &req, const std::string &cgi,
-				   const std::string &script, const LocationConfig *loc);
+		CgiHandler(const HttpRequest &req, const std::string &cgi, const std::string &script, const LocationConfig *loc);
 		virtual ~CgiHandler(void);
 
 		bool	execute(EventLoop &loop);

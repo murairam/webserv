@@ -35,7 +35,10 @@ Connection::~Connection(void)
 Connection::Connection(int fd, const std::string &server_name, const ServerConfig *server, const std::vector<const ServerConfig*> &servers)
 :_fd(fd), _loop(0), _server_name(server_name), _inbuf(),
 _outbuf(), _engaged(false), _should_close(false), _server(server),
-_available_servers(servers), _method(0), _cgi(0)
+_available_servers(servers), _method(0), _cgi(0),
+_request_metadata_ready(false), _request_chunked(false),
+_request_content_length(-1), _request_body_limit(-1),
+_request_header_end(0), _chunk_total_bytes(0), _chunk_scan_offset(0)
 {
 	(void)set_nonblock_fd_nothrow(_fd);
 	if (_available_servers.empty() && _server)
@@ -44,6 +47,218 @@ _available_servers(servers), _method(0), _cgi(0)
 		_server = _available_servers[0];
 	if (_server)
 		_server_name = _server->getServerName();
+	resetRequestState();
+}
+
+void	Connection::resetRequestState(void)
+{
+	_request_metadata_ready = false;
+	_request_chunked = false;
+	_request_content_length = -1;
+	_request_body_limit = -1;
+	_request_header_end = 0;
+	_chunk_total_bytes = 0;
+	_chunk_scan_offset = 0;
+}
+
+const ServerConfig	*Connection::selectDefaultServer(void) const
+{
+	if (_server)
+		return (_server);
+	if (!_available_servers.empty())
+		return (_available_servers[0]);
+	return (0);
+}
+
+bool	Connection::parseRequestMetadata(void)
+{
+	if (_request_metadata_ready)
+		return (true);
+	std::string::size_type header_end = _inbuf.find("\r\n\r\n");
+	if (header_end == std::string::npos)
+		return (false);
+
+	_request_header_end = header_end + 4;
+	_request_chunked = false;
+	_request_content_length = -1;
+
+	std::string header_block = _inbuf.substr(0, header_end);
+	std::istringstream stream(header_block);
+	std::string line;
+
+	if (!std::getline(stream, line))
+		return (false);
+	if (!line.empty() && line[line.size() - 1] == '\r')
+		line.erase(line.size() - 1);
+
+	while (std::getline(stream, line))
+	{
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+		if (line.empty())
+			break;
+		size_t colon = line.find(':');
+		if (colon == std::string::npos)
+			continue;
+		std::string name = toLower(trim(line.substr(0, colon)));
+		std::string value = trim(line.substr(colon + 1));
+		if (name == "content-length")
+		{
+			long parsed = std::strtol(value.c_str(), NULL, 10);
+			if (parsed >= 0)
+				_request_content_length = parsed;
+		}
+		else if (name == "transfer-encoding")
+		{
+			std::string lower_value = toLower(value);
+			if (lower_value.find("chunked") != std::string::npos)
+				_request_chunked = true;
+		}
+	}
+
+	const ServerConfig *active = selectDefaultServer();
+	if (active)
+		_request_body_limit = active->getBodyLimit(0);
+	else
+		_request_body_limit = -1;
+
+	_request_metadata_ready = true;
+	_chunk_scan_offset = _request_header_end;
+	_chunk_total_bytes = 0;
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Parsed metadata - content-length "
+			  << _request_content_length << ", chunked "
+			  << (_request_chunked ? "true" : "false")
+			  << ", limit " << _request_body_limit << std::endl;
+#endif
+	return (true);
+}
+
+bool	Connection::enforceRequestBodyLimit(void)
+{
+	if (_inbuf.empty())
+		return (false);
+	if (!parseRequestMetadata())
+		return (false);
+	if (_request_body_limit < 0)
+		return (false);
+
+	if (_request_content_length >= 0 && _request_content_length > _request_body_limit)
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Early body limit violation detected (Content-Length exceeds limit)" << std::endl;
+#endif
+		_should_close = true;
+		sendErrorResponse(413);
+		_inbuf.clear();
+		resetRequestState();
+		return (true);
+	}
+
+	if (_request_chunked)
+	{
+		if (checkChunkedBodyLimit())
+			return (true);
+	}
+
+	size_t body_bytes = 0;
+	if (_inbuf.size() > _request_header_end)
+		body_bytes = _inbuf.size() - _request_header_end;
+
+	if (!_request_chunked && _request_content_length < 0 && static_cast<long>(body_bytes) > _request_body_limit)
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Early body limit violation detected (body bytes exceed limit without Content-Length)" << std::endl;
+#endif
+		_should_close = true;
+		sendErrorResponse(413);
+		_inbuf.clear();
+		resetRequestState();
+		return (true);
+	}
+
+	if (_request_content_length >= 0 && static_cast<long>(body_bytes) > _request_body_limit)
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Early body limit violation detected (received body exceeds limit)" << std::endl;
+#endif
+		_should_close = true;
+		sendErrorResponse(413);
+		_inbuf.clear();
+		resetRequestState();
+		return (true);
+	}
+
+	return (false);
+}
+
+bool	Connection::checkChunkedBodyLimit(void)
+{
+	if (!_request_chunked)
+		return (false);
+	if (_chunk_scan_offset < _request_header_end)
+		_chunk_scan_offset = _request_header_end;
+
+	size_t cursor = _chunk_scan_offset;
+	long total = _chunk_total_bytes;
+	const std::string &buffer = _inbuf;
+
+	while (true)
+	{
+		size_t line_end = buffer.find("\r\n", cursor);
+		if (line_end == std::string::npos)
+			break;
+		std::string size_line = buffer.substr(cursor, line_end - cursor);
+		std::string::size_type semicolon = size_line.find(';');
+		if (semicolon != std::string::npos)
+			size_line = size_line.substr(0, semicolon);
+		size_line = trim(size_line);
+		if (size_line.empty())
+		{
+			cursor = line_end + 2;
+			continue;
+		}
+
+		long chunk_size = std::strtol(size_line.c_str(), NULL, 16);
+		if (chunk_size < 0)
+			return (false);
+
+		cursor = line_end + 2;
+
+		if (chunk_size == 0)
+		{
+			_chunk_total_bytes = total;
+			_chunk_scan_offset = cursor;
+			return (false);
+		}
+
+		if (total + chunk_size > _request_body_limit)
+		{
+#ifdef _DEBUG
+			std::cerr << "DEBUG: Early body limit violation detected (chunked payload exceeds limit)" << std::endl;
+#endif
+			_should_close = true;
+			sendErrorResponse(413);
+			_inbuf.clear();
+			resetRequestState();
+			return (true);
+		}
+
+		size_t chunk_end = cursor + static_cast<size_t>(chunk_size);
+		if (chunk_end > buffer.size())
+			break;
+		if (chunk_end + 1 >= buffer.size())
+			break;
+		if (buffer[chunk_end] != '\r' || buffer[chunk_end + 1] != '\n')
+			break;
+
+		total += chunk_size;
+		cursor = chunk_end + 2;
+	}
+
+	_chunk_total_bytes = total;
+	_chunk_scan_offset = cursor;
+	return (false);
 }
 
 void	Connection::engageLoop(EventLoop &loop)
@@ -136,6 +351,7 @@ void	Connection::onReadable(int fd)
 		_should_close = true;
 		std::memset(&buf, 0, sizeof(buf));
 		_inbuf.clear();
+		resetRequestState();
 	}
 	/* n < 0 must be ignored, otherwise this shit blocks and all fuck up*/
 }
@@ -151,8 +367,12 @@ void	Connection::dispatcher(void)
 	if (_inbuf.empty())
 	{
 		_should_close = true;
+		resetRequestState();
 		return;
 	}
+
+	if (enforceRequestBodyLimit())
+		return;
 	// TRY NEW PARSER FIRST
 	if (handleRequestWithNewParser())
 	{
@@ -160,6 +380,7 @@ void	Connection::dispatcher(void)
 		std::cerr << "SUCCESS: New parser handled request, clearing input buffer" << std::endl;
 #endif
 		_inbuf.clear();  // Request handled successfully
+		resetRequestState();
 		return;
 	}
 

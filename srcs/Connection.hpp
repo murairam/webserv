@@ -45,6 +45,13 @@ class	Connection: public IFdHandler
 		std::vector<const ServerConfig*>	_available_servers;
 		int			_method;
 		CgiHandler	*_cgi;
+		bool		_request_metadata_ready;
+		bool		_request_chunked;
+		long		_request_content_length;
+		long		_request_body_limit;
+		size_t		_request_header_end;
+		long		_chunk_total_bytes;
+		size_t		_chunk_scan_offset;
 
 		// NEW PARSER INTEGRATION
 		void	dispatcher(void);    // Make sure this is declared
@@ -72,6 +79,11 @@ class	Connection: public IFdHandler
 		std::string	getContentType(const std::string &file_path) const;
 		std::string	getFileExtension(const std::string &path) const;
 		std::string	intToString(int value) const;
+		bool		enforceRequestBodyLimit(void);
+		bool		parseRequestMetadata(void);
+		void		resetRequestState(void);
+		const ServerConfig	*selectDefaultServer(void) const;
+		bool		checkChunkedBodyLimit(void);
 
 		Connection(void);
 		Connection(const Connection &other);
