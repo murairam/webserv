@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/18 21:05:45 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/01 13:50:05 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/03 22:17:00 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,7 @@ class	EventLoop
 		int					_wakeup_rd_fd;
 		int					_wakeup_wr_fd;
 		bool				_should_stop;
-		unsigned			_timeout;
+		int					_timeout;
 		
 	public:
 		EventLoop(void);
@@ -57,7 +57,7 @@ class	EventLoop
 		/* change events for an engaged FD */
 		void	set_events(int fd, int events);
 		/* set the maximum waiting time to avoid hangup */
-		void	set_timeout(unsigned timeout);
+		void	set_timeout(int timeout);
 		/* start the loop */
 		void	run(void);
 		/* run only once (single poll-dispatch cycle) with a timeout */

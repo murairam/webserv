@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:57:27 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/01 13:50:19 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/03 22:16:47 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -192,7 +192,7 @@ void	EventLoop::set_events(int fd, int events)
 	it->second._last_active = getTime();
 }
 
-void	EventLoop::set_timeout(unsigned timeout)
+void	EventLoop::set_timeout(int timeout)
 {
 	this->_timeout = timeout;
 }

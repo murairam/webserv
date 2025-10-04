@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/03 15:08:30 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/03 22:43:13 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -335,25 +335,51 @@ bool	Connection::isClose(void) const
 
 void	Connection::onReadable(int fd)
 {
-	char	buf[81920];
+	char	buf[655360];
+	bool	received_data = false;
+	bool	remote_closed = false;
 
-	std::memset(&buf, 0, sizeof(buf));
-	ssize_t	n = ::recv(_fd, buf, static_cast<int>(81919u), 0);
 	(void)fd;
-
-	if (n > 0)
+	while (true)
 	{
-		_inbuf.append(buf, static_cast<size_t>(n));
-		dispatcher();
+		ssize_t n = ::recv(_fd, buf, static_cast<int>(sizeof(buf)), 0);
+		if (n > 0)
+		{
+			_inbuf.append(buf, static_cast<size_t>(n));
+			received_data = true;
+			continue;
+		}
+		if (!n)
+		{
+			remote_closed = true;
+			_should_close = true;
+			break;
+		}
+		if (n < 0)
+		{
+			if (errno == EINTR)
+				continue;
+			if (errno == EAGAIN
+#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
+					|| errno == EWOULDBLOCK
+#endif
+			)
+				break;
+			_should_close = true;
+			_inbuf.clear();
+			resetRequestState();
+			return;
+		}
 	}
-	else
-	{
+	if (received_data)
+		dispatcher();
+	if (remote_closed)
 		_should_close = true;
-		std::memset(&buf, 0, sizeof(buf));
+	if (_should_close)
+	{
 		_inbuf.clear();
 		resetRequestState();
 	}
-	/* n < 0 must be ignored, otherwise this shit blocks and all fuck up*/
 }
 
 void	Connection::dispatcher(void)
@@ -386,12 +412,7 @@ void	Connection::dispatcher(void)
 
 	// If we get here, check if it's just an incomplete request
 	if (!HttpRequestParser::isCompleteRequest(_inbuf))
-	{
-#ifdef _DEBUG
-		std::cerr << "DEBUG: Request still incomplete, keeping connection open" << std::endl;
-#endif
 		return;  // Keep connection open, wait for more data
-	}
 
 	// If we get here, the new parser failed on a complete request - this shouldn't happen now
 #ifdef _DEBUG
@@ -577,7 +598,8 @@ void	Connection::handleGetRequest(const HttpRequest& request, const LocationConf
 			return;  // Important: return after CGI handling
 		}
 	}
-	// Build file path
+#ifdef	_TESTER_VERSION
+// Build file path
 	std::string file_path = buildFilePath(loc, request.getPath());
 #ifdef _DEBUG
 	std::cerr << "DEBUG: Built file path: " << file_path << std::endl;
@@ -630,16 +652,115 @@ void	Connection::handleGetRequest(const HttpRequest& request, const LocationConf
 		}
 		return;
 	}
+#else
+	// Build file path with normalized target
+	std::string	raw_path = request.getPath();
+	std::string	effective_path = raw_path.empty() ? std::string("/") : raw_path;
+	bool	request_has_trailing_slash = (!effective_path.empty() 
+		&& effective_path[effective_path.size() - 1] == '/');
+	std::string normalized_target = effective_path;
+	if (normalized_target.size() > 1)
+		while (normalized_target.size() > 1 
+			&& normalized_target[normalized_target.size() - 1] == '/')
+				normalized_target.erase(normalized_target.size() - 1);
+	std::string	file_path = buildFilePath(loc, normalized_target);
+#ifdef _DEBUG
+	std::cerr << "DEBUG: Built file path: " << file_path << std::endl;
+#endif
+		
+	struct stat	path_stat;
+	bool	path_exists = (::stat(file_path.c_str(), &path_stat) == 0);
+	if (request_has_trailing_slash && path_exists && S_ISREG(path_stat.st_mode))
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: File requested with trailing slash, returning 404" << std::endl;
+#endif
+		sendErrorResponse(404);
+		return;
+	}
+
+	if (!request_has_trailing_slash && path_exists && S_ISDIR(path_stat.st_mode))
+	{
+#ifdef _DEBUG
+		std::cerr << "DEBUG: Directory requested without trailing slash, redirecting" << std::endl;
+#endif
+		std::string redirect_target = effective_path;
+		redirect_target += "/";
+		if (!request.getQuery().empty())
+		{
+			redirect_target += "?";
+			redirect_target += request.getQuery();
+		}
+			sendRedirectResponse(301, redirect_target);
+			return;
+		}
+
+		// Check if it's a directory
+		if (path_exists && S_ISDIR(path_stat.st_mode))
+		{
+#ifdef _DEBUG
+			std::cerr << "DEBUG: Path is a directory, checking for index files" << std::endl;
+#endif
+			// Try index files
+			const std::vector<std::string>	&index_files = loc->getIndexFiles();
+			bool	found_index = false;
+
+			for (size_t i = 0; i < index_files.size(); ++i)
+			{
+				std::string index_path = file_path + "/" + index_files[i];
+#ifdef _DEBUG
+				std::cerr << "DEBUG: Trying index file: " << index_path << std::endl;
+#endif
+				if (!isDirectory(index_path))
+				{
+					if (serveFile(index_path, err_code))
+					{
+#ifdef _DEBUG
+						std::cerr << "DEBUG: Successfully served index file: " << index_files[i] << std::endl;
+#endif
+						found_index = true;
+						break;
+					}
+				}
+			}
+			// If no index file found, try autoindex
+			if (!found_index)
+			{
+				// Only allow directory listing if path ends with '/' or if explicitly requested
+				bool	allow_directory_listing = (!effective_path.empty() 
+					&& effective_path[effective_path.length() - 1] == '/');
+
+				if (allow_directory_listing && loc->getAutoindex())
+                {
+#ifdef _DEBUG
+					std::cerr << "DEBUG: No index file found, generating directory listing" << std::endl;
+#endif
+					sendDirectoryListing(file_path, effective_path);
+				}
+				else
+				{
+#ifdef _DEBUG
+					std::cerr << "DEBUG: No index file found, returning 404" << std::endl;
+#endif
+					sendErrorResponse(404);  // Not Found
+				}
+			}
+			return;
+		}
+#endif /* _TESTER_VERSION */
 	// Regular file serving
 #ifdef _DEBUG
 	std::cerr << "DEBUG: Attempting to serve regular file: " << file_path << std::endl;
 #endif
-	if (!serveFile(file_path, err_code)) {
+	if (!serveFile(file_path, err_code))
+	{
 #ifdef _DEBUG
 		std::cerr << "DEBUG: Failed to serve file: " << file_path << std::endl;
 #endif
 		sendErrorResponse(err_code);
-	} else {
+	}
+	else
+	{
 #ifdef _DEBUG
 		std::cerr << "DEBUG: Successfully served file: " << file_path << std::endl;
 #endif
@@ -955,12 +1076,7 @@ void Connection::checkCgi(void)
 
 	// Second check: ensure _cgi is done (this also validates _cgi is still valid)
 	if (!_cgi->isDone())
-	{
-#ifdef _DEBUG
-		std::cerr << "DEBUG: checkCgi - CGI not done yet, returning" << std::endl;
-#endif
 		return;
-	}
 
 #ifdef _DEBUG
 	std::cerr << "DEBUG: CGI is done, checking timeout..." << std::endl;
