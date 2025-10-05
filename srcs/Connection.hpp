@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:08:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/03 10:17:38 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/04 15:57:49 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,10 +48,12 @@ class	Connection: public IFdHandler
 		bool		_request_metadata_ready;
 		bool		_request_chunked;
 		long		_request_content_length;
-		long		_request_body_limit;
+		size_t		_request_body_limit;
+		bool		_has_request_body_limit;
 		size_t		_request_header_end;
-		long		_chunk_total_bytes;
+		size_t		_chunk_total_bytes;
 		size_t		_chunk_scan_offset;
+		bool		_pending_cgi;
 
 		// NEW PARSER INTEGRATION
 		void	dispatcher(void);    // Make sure this is declared
@@ -118,8 +120,9 @@ class	Connection: public IFdHandler
 		virtual void	onHangup(int fd);
 		virtual void	onTick(int fd);
 
-		static bool	handleMultipart(const HttpRequest &request, std::string &filename, std::string &content);
+		static bool	handleMultipart(const HttpRequest &request, std::string &filename, std::size_t &content_offset, std::size_t &content_length);
 		static bool	uploadFile(const HttpRequest &request, const LocationConfig *loc, std::string &response_body, int &status_code, const std::string &method);
+		void	markCgiReady(void);
 };
 
 #endif

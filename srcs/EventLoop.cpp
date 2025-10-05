@@ -27,24 +27,18 @@ namespace
 		(void)sig;
 	}
 
-void	drain_pipe(int fd)
+	void	drain_pipe(int fd)
 	{
 		char	buf[5000];
 		while (1)
 		{
 			ssize_t	n = ::read(fd, buf, sizeof(buf));
 			if (n > 0)
+			{
+				if (static_cast<size_t>(n) < sizeof(buf))
+					break;
 				continue;
-			if (!n)
-				break;
-			if (errno == EINTR)
-				continue;
-			if (errno == EAGAIN
-#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
-					|| errno == EWOULDBLOCK
-#endif
-			)
-				break;
+			}
 			break;
 		}
 	}

@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/02 12:58:51 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/02 13:43:42 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/04 11:28:35 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 class	EventLoop;
 class	HttpRequest;
 class	LocationConfig;
+class	Connection;
 
 class	CgiHandler: public IFdHandler
 {
@@ -34,12 +35,14 @@ class	CgiHandler: public IFdHandler
 		int			_status;
 		std::map<std::string,std::string>	_headers;
 		std::string	_response_body;
+		size_t		_body_start;
 		EventLoop	*_loop;
 		time_t		_start;
 		std::string	_cgi_path;
 		std::string	_script;
 		std::string	_workdir;
 		std::map<std::string,std::string>	_env;
+		Connection	*_owner;
 
 		void	closePipes(void);
 		char	**buildEnv(void) const;
@@ -51,7 +54,8 @@ class	CgiHandler: public IFdHandler
 		CgiHandler	&operator=(const CgiHandler &other);
 	
 	public:
-		CgiHandler(const HttpRequest &req, const std::string &cgi, const std::string &script, const LocationConfig *loc);
+		CgiHandler(const HttpRequest &req, const std::string &cgi,
+			const std::string &script, const LocationConfig *loc, Connection *owner);
 		virtual ~CgiHandler(void);
 
 		bool	execute(EventLoop &loop);

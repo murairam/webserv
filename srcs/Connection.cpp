@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:51:12 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/03 22:43:13 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/04 16:01:01 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,8 +37,9 @@ Connection::Connection(int fd, const std::string &server_name, const ServerConfi
 _outbuf(), _engaged(false), _should_close(false), _server(server),
 _available_servers(servers), _method(0), _cgi(0),
 _request_metadata_ready(false), _request_chunked(false),
-_request_content_length(-1), _request_body_limit(-1),
-_request_header_end(0), _chunk_total_bytes(0), _chunk_scan_offset(0)
+_request_content_length(-1), _request_body_limit(0),
+_has_request_body_limit(false),
+_request_header_end(0), _chunk_total_bytes(0), _chunk_scan_offset(0), _pending_cgi(false)
 {
 	(void)set_nonblock_fd_nothrow(_fd);
 	if (_available_servers.empty() && _server)
@@ -55,10 +56,12 @@ void	Connection::resetRequestState(void)
 	_request_metadata_ready = false;
 	_request_chunked = false;
 	_request_content_length = -1;
-	_request_body_limit = -1;
+	_request_body_limit = 0;
+	_has_request_body_limit = false;
 	_request_header_end = 0;
 	_chunk_total_bytes = 0;
 	_chunk_scan_offset = 0;
+	_pending_cgi = false;
 }
 
 const ServerConfig	*Connection::selectDefaultServer(void) const
@@ -117,19 +120,28 @@ bool	Connection::parseRequestMetadata(void)
 	}
 
 	const ServerConfig *active = selectDefaultServer();
-	if (active)
-		_request_body_limit = active->getBodyLimit(0);
+	long	configured_limit = (active ? active->getBodyLimit(0) : -1);
+	if (configured_limit >= 0)
+	{
+		_has_request_body_limit = true;
+		_request_body_limit = static_cast<size_t>(configured_limit);
+	}
 	else
-		_request_body_limit = -1;
+	{
+		_has_request_body_limit = false;
+		_request_body_limit = 0;
+	}
 
 	_request_metadata_ready = true;
 	_chunk_scan_offset = _request_header_end;
 	_chunk_total_bytes = 0;
 #ifdef _DEBUG
-	std::cerr << "DEBUG: Parsed metadata - content-length "
-			  << _request_content_length << ", chunked "
+	std::cerr << "DEBUG: Parsed metadata - content-length ("
+			  << _request_content_length << "), chunked "
 			  << (_request_chunked ? "true" : "false")
-			  << ", limit " << _request_body_limit << std::endl;
+			  << ", limit "
+			  << (_has_request_body_limit ? static_cast<long>(_request_body_limit) : -1)
+			  << std::endl;
 #endif
 	return (true);
 }
@@ -140,11 +152,14 @@ bool	Connection::enforceRequestBodyLimit(void)
 		return (false);
 	if (!parseRequestMetadata())
 		return (false);
-	if (_request_body_limit < 0)
+	if (!_has_request_body_limit)
 		return (false);
 
-	if (_request_content_length >= 0 && _request_content_length > _request_body_limit)
+	if (_request_content_length >= 0)
 	{
+		unsigned long long content_length = static_cast<unsigned long long>(_request_content_length);
+		if (content_length > static_cast<unsigned long long>(_request_body_limit))
+		{
 #ifdef _DEBUG
 		std::cerr << "DEBUG: Early body limit violation detected (Content-Length exceeds limit)" << std::endl;
 #endif
@@ -153,6 +168,7 @@ bool	Connection::enforceRequestBodyLimit(void)
 		_inbuf.clear();
 		resetRequestState();
 		return (true);
+		}
 	}
 
 	if (_request_chunked)
@@ -165,7 +181,7 @@ bool	Connection::enforceRequestBodyLimit(void)
 	if (_inbuf.size() > _request_header_end)
 		body_bytes = _inbuf.size() - _request_header_end;
 
-	if (!_request_chunked && _request_content_length < 0 && static_cast<long>(body_bytes) > _request_body_limit)
+	if (!_request_chunked && _request_content_length < 0 && body_bytes > _request_body_limit)
 	{
 #ifdef _DEBUG
 		std::cerr << "DEBUG: Early body limit violation detected (body bytes exceed limit without Content-Length)" << std::endl;
@@ -177,7 +193,7 @@ bool	Connection::enforceRequestBodyLimit(void)
 		return (true);
 	}
 
-	if (_request_content_length >= 0 && static_cast<long>(body_bytes) > _request_body_limit)
+	if (_request_content_length >= 0 && body_bytes > _request_body_limit)
 	{
 #ifdef _DEBUG
 		std::cerr << "DEBUG: Early body limit violation detected (received body exceeds limit)" << std::endl;
@@ -194,22 +210,30 @@ bool	Connection::enforceRequestBodyLimit(void)
 
 bool	Connection::checkChunkedBodyLimit(void)
 {
-	if (!_request_chunked)
+	if (!_request_chunked || !_has_request_body_limit)
 		return (false);
 	if (_chunk_scan_offset < _request_header_end)
 		_chunk_scan_offset = _request_header_end;
 
-	size_t cursor = _chunk_scan_offset;
-	long total = _chunk_total_bytes;
-	const std::string &buffer = _inbuf;
+	size_t	cursor = _chunk_scan_offset;
+	size_t	total = _chunk_total_bytes;
+	const std::string	&buffer = _inbuf;
 
 	while (true)
 	{
-		size_t line_end = buffer.find("\r\n", cursor);
-		if (line_end == std::string::npos)
+		size_t header_pos = cursor;
+
+		if (header_pos >= buffer.size())
 			break;
-		std::string size_line = buffer.substr(cursor, line_end - cursor);
-		std::string::size_type semicolon = size_line.find(';');
+
+		size_t line_end = buffer.find("\r\n", header_pos);
+		if (line_end == std::string::npos)
+		{
+			cursor = header_pos;
+			break;
+		}
+		std::string size_line = buffer.substr(header_pos, line_end - header_pos);
+		size_t	semicolon = size_line.find(';');
 		if (semicolon != std::string::npos)
 			size_line = size_line.substr(0, semicolon);
 		size_line = trim(size_line);
@@ -218,24 +242,43 @@ bool	Connection::checkChunkedBodyLimit(void)
 			cursor = line_end + 2;
 			continue;
 		}
-
-		long chunk_size = std::strtol(size_line.c_str(), NULL, 16);
-		if (chunk_size < 0)
-			return (false);
-
+		int	err_code = 0;
+		char	*endptr = NULL;
+		errno = 0;
+		unsigned long parsed_size = std::strtoul(size_line.c_str(), &endptr, 16);
+		err_code = errno;
+		if (err_code == ERANGE || endptr == size_line.c_str() || (endptr && *endptr != '\0'))
+		{
+#ifdef _DEBUG
+			std::cerr << "DEBUG: Invalid chunk size line encountered: " << size_line << std::endl;
+#endif
+			_should_close = true;
+			sendErrorResponse(400);
+			_inbuf.clear();
+			resetRequestState();
+			return (true);
+		}
+		if (parsed_size > static_cast<unsigned long>(std::numeric_limits<size_t>::max()))
+		{
+			_should_close = true;
+			sendErrorResponse(413);
+			_inbuf.clear();
+			resetRequestState();
+			return (true);
+		}
+		size_t	chunk_size = static_cast<size_t>(parsed_size);
 		cursor = line_end + 2;
-
 		if (chunk_size == 0)
 		{
 			_chunk_total_bytes = total;
 			_chunk_scan_offset = cursor;
 			return (false);
 		}
-
-		if (total + chunk_size > _request_body_limit)
+		size_t	limit = _request_body_limit;
+		if (chunk_size > limit)
 		{
 #ifdef _DEBUG
-			std::cerr << "DEBUG: Early body limit violation detected (chunked payload exceeds limit)" << std::endl;
+			std::cerr << "DEBUG: Chunked body exceeds configured limit" << std::endl;
 #endif
 			_should_close = true;
 			sendErrorResponse(413);
@@ -243,19 +286,50 @@ bool	Connection::checkChunkedBodyLimit(void)
 			resetRequestState();
 			return (true);
 		}
-
-		size_t chunk_end = cursor + static_cast<size_t>(chunk_size);
-		if (chunk_end > buffer.size())
+		if (total > limit - chunk_size)
+		{
+#ifdef _DEBUG
+			std::cerr << "DEBUG: Chunked body exceeds configured limit" << std::endl;
+#endif
+			_should_close = true;
+			sendErrorResponse(413);
+			_inbuf.clear();
+			resetRequestState();
+			return (true);
+		}
+		if (cursor >= buffer.size())
+		{
+			cursor = header_pos;
 			break;
+		}
+		size_t	remaining = buffer.size() - cursor;
+		if (chunk_size > remaining)
+		{
+			cursor = header_pos;
+			break;
+		}
+		size_t	chunk_end = cursor + chunk_size;
 		if (chunk_end + 1 >= buffer.size())
+		{
+			cursor = header_pos;
 			break;
+		}
 		if (buffer[chunk_end] != '\r' || buffer[chunk_end + 1] != '\n')
+		{
+			cursor = header_pos;
 			break;
-
+		}
+		if (chunk_size > std::numeric_limits<size_t>::max() - total)
+		{
+			_should_close = true;
+			sendErrorResponse(413);
+			_inbuf.clear();
+			resetRequestState();
+			return (true);
+		}
 		total += chunk_size;
 		cursor = chunk_end + 2;
 	}
-
 	_chunk_total_bytes = total;
 	_chunk_scan_offset = cursor;
 	return (false);
@@ -340,36 +414,23 @@ void	Connection::onReadable(int fd)
 	bool	remote_closed = false;
 
 	(void)fd;
-	while (true)
+	ssize_t n = ::recv(_fd, buf, static_cast<int>(sizeof(buf)), 0);
+	if (n > 0)
 	{
-		ssize_t n = ::recv(_fd, buf, static_cast<int>(sizeof(buf)), 0);
-		if (n > 0)
-		{
-			_inbuf.append(buf, static_cast<size_t>(n));
-			received_data = true;
-			continue;
-		}
-		if (!n)
-		{
-			remote_closed = true;
-			_should_close = true;
-			break;
-		}
-		if (n < 0)
-		{
-			if (errno == EINTR)
-				continue;
-			if (errno == EAGAIN
-#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
-					|| errno == EWOULDBLOCK
-#endif
-			)
-				break;
-			_should_close = true;
-			_inbuf.clear();
-			resetRequestState();
-			return;
-		}
+		_inbuf.append(buf, static_cast<size_t>(n));
+		received_data = true;
+	}
+	else if (n == 0)
+	{
+		remote_closed = true;
+		_should_close = true;
+	}
+	else
+	{
+		this->onError(_fd);
+		_inbuf.clear();
+		resetRequestState();
+		return;
 	}
 	if (received_data)
 		dispatcher();
@@ -539,13 +600,16 @@ std::cerr << "DEBUG: Found location match, prefix: " << loc->getPathPrefix() << 
 	// Check body size limits (for POST requests)
 	if (request.getMethod() == "POST") {
 		long body_limit = _server->getBodyLimit(loc);
-		if (body_limit >= 0 && static_cast<long>(request.getBody().length()) > body_limit) {
+		if (body_limit >= 0) {
+			size_t limit_bytes = static_cast<size_t>(body_limit);
+			if (request.getBody().length() > limit_bytes) {
 #ifdef _DEBUG
 			std::cerr << "DEBUG: Body size " << request.getBody().length()
 					  << " exceeds limit " << body_limit << std::endl;
 #endif
 			sendErrorResponse(413);  // Payload Too Large
 			return;
+			}
 		}
 	}
 
@@ -792,11 +856,15 @@ void	Connection::handlePostRequest(const HttpRequest& request, const LocationCon
 		std::string cgi_program = loc->getCgi(extension);
 		if (!cgi_program.empty())
 		{
+			std::string script_path = buildFilePath(loc, request.getPath());
 #ifdef _DEBUG
-			std::cerr << "DEBUG: CGI handler found for extension " << extension
-					  << ": " << cgi_program << std::endl;
+			std::cerr << "DEBUG: Evaluating CGI script candidate: " << script_path << std::endl;
+			struct stat	st;
+			bool script_ok = (!::stat(script_path.c_str(), &st)
+				&& ::access(script_path.c_str(), R_OK) == 0);
+			std::cerr << "DEBUG: CGI script candidate accessible: " << (script_ok ? "yes" : "no") << std::endl;
 #endif
-			handleCgiRequest(request, loc, cgi_program);
+			std::cerr << "DEBUG: CGI handler found for extension " << extension<< ": " << cgi_program << std::endl;handleCgiRequest(request, loc, cgi_program);
 			return;
 		}
 	}
@@ -930,63 +998,41 @@ void	Connection::sendSimpleResponse(int code, const std::string &content_type, c
 	queueWrite(response);
 }
 
-std::string	Connection::resolveRedirectLocation(const std::string &target, const HttpRequest &request) const
+std::string	Connection::resolveRedirectLocation
+(const std::string &target, const HttpRequest &request) const
 {
 	if (target.empty())
 		return (target);
 	std::string	resolved = target;
-	size_t	scheme_pos = target.find("://");
+	size_t		scheme_pos = target.find("://");
 	if (scheme_pos != std::string::npos)
 	{
 		size_t	domain_start = scheme_pos + 3;
-		size_t	query_pos = target.find('?', domain_start);
 		size_t	path_pos = target.find('/', domain_start);
-		if (query_pos != std::string::npos && (path_pos == std::string::npos || query_pos < path_pos))
-			path_pos = std::string::npos;
-		bool	has_query = (query_pos != std::string::npos);
-		bool	has_path = (path_pos != std::string::npos);
-		if (!has_path)
+		if (path_pos == std::string::npos)
 		{
-			std::string	path = request.getPath();
-			if (path.empty())
-				path = std::string("/");
-			else if (path[0] != '/')
-				path.insert(path.begin(), '/');
-			resolved += path;
+			const std::string	&path = request.getPath();
+			if (path.empty() || path == "/")
+				resolved += "/";
 		}
-		else
-		{
-			std::string	path_fragment = target.substr(path_pos, has_query ? (query_pos - path_pos) : (std::string::npos));
-			if (path_fragment == "/")
-			{
-				std::string	path = request.getPath();
-				if (path.empty())
-					path = "/";
-				if (resolved.empty() || resolved[resolved.size() - 1] != '/')
-					resolved += '/';
-				if (path.size() > 1)
-				{
-					if (!path.empty() && path[0] == '/')
-						path.erase(0, 1);
-					resolved += path;
-				}
-			}
-		}
-		if (!has_query && !request.getQuery().empty())
-		{
-			resolved += '?';
-			resolved += request.getQuery();
-		}
+		if (resolved.find('?') == std::string::npos && !request.getQuery().empty())
+			resolved += ('?' + request.getQuery());
 		return (resolved);
 	}
-	if (!request.getQuery().empty() && target.find('?') == std::string:: npos)
+	if (!target.empty() && target[0] != '/')
 	{
-		std::string	relative = target;
-		relative += '?';
-		relative += request.getQuery();
-		return (relative);
+		std::string	base_path = request.getPath();
+		if (base_path.empty() || base_path[0] != '/')
+			base_path = std::string("/");
+		if (!base_path.empty()
+		&& base_path[base_path.size() - 1] != '/')
+			base_path += '/';
+		resolved = base_path + target;
 	}
-	return (target);
+	if (resolved.find('?') == std::string::npos
+	&& !request.getQuery().empty())
+		resolved += ('?' + request.getQuery());
+	return (resolved);
 }
 
 void	Connection::sendRedirectResponse(int code, const std::string &location)
@@ -995,44 +1041,53 @@ void	Connection::sendRedirectResponse(int code, const std::string &location)
 	std::cerr << "DEBUG: Sending redirect response - Code: "<<code<< ", Location: " << location << std::endl;
 #endif
 
-	std::string response =
+	std::string	response =
 		"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\nDate: " + getTimeString() + "\r\nLocation: " + location + "\r\n" + "Content-Length: 0\r\n" + "Connection: " + (!_should_close ? "keep-alive\r\n\r\n" : "close\r\n\r\n");
 
 	queueWrite(response);
 }
 
-void Connection::sendDirectoryListing(const std::string& dir_path, const std::string& uri)
+void	Connection::sendDirectoryListing
+(const std::string& dir_path, const std::string& uri)
 {
 #ifdef _DEBUG
 	std::cerr << "DEBUG: Generating directory listing for: " << dir_path << "\nDEBUG uri is: "<<uri<<std::endl;
 #endif
-	Response response = Response::createDirectoryListing(dir_path, uri);
+	Response	response = Response::createDirectoryListing(dir_path, uri);
 	response.setHeader("Connection", _should_close ? "close" : "keep-alive");
 	queueWrite(response.serialize());
 	requestClose();
 }
 
-void	Connection::handleCgiRequest(const HttpRequest& request, const LocationConfig* loc, const std::string& cgi_program)
+void	Connection::handleCgiRequest
+(const HttpRequest& request, const LocationConfig* loc,
+	const std::string& cgi_program)
 {
 	std::string	script_path = buildFilePath(loc, request.getPath());
 #ifdef _DEBUG
 	std::cerr<<"DEBUG: CGI script path: "<<script_path<<std::endl;
 #endif
 
-	struct stat st;
-	if (stat(script_path.c_str(), &st) != 0 || access(script_path.c_str(), R_OK) != 0)
+	struct stat	st;
+	int	stat_result = ::stat(script_path.c_str(), &st);
+#ifdef	_DEBUG
+	if (stat_result)
+		std::cerr<<"DEBUG: stat() on CGI script failed: "<<std::strerror(errno)<<std::endl;
+#endif
+	if (!stat_result && S_ISDIR(st.st_mode))
 	{
 		sendErrorResponse(404);
 		return;
 	}
-
-#ifdef _DEBUG
+#ifdef	_DEBUG
+	else if (stat_result || ::access(script_path.c_str(), R_OK))
+		std::cerr<<"DEBUG: CGI script not accessible (continuing): "<<script_path<<std::endl;
 	std::cerr << "DEBUG: Creating CGI handler..." << std::endl;
 #endif
 
 	try
 	{
-		_cgi = new CgiHandler(request, cgi_program, script_path, loc);
+		_cgi = new CgiHandler(request, cgi_program, script_path, loc, this);
 	}
 	catch (const std::exception &e)
 	{
@@ -1063,7 +1118,7 @@ void	Connection::handleCgiRequest(const HttpRequest& request, const LocationConf
 #endif
 }
 
-void Connection::checkCgi(void)
+void	Connection::checkCgi(void)
 {
 	// First check: ensure _cgi exists
 	if (!_cgi)
@@ -1073,12 +1128,15 @@ void Connection::checkCgi(void)
 #endif
 		return;
 	}
+#ifdef _DEBUG_CGI
+	std::cerr << "DEBUG: checkCgi called, _cgi->isDone()=" << (_cgi->isDone() ? "true" : "false") << std::endl;
+#endif
 
 	// Second check: ensure _cgi is done (this also validates _cgi is still valid)
 	if (!_cgi->isDone())
 		return;
 
-#ifdef _DEBUG
+#ifdef _DEBUG_CGI
 	std::cerr << "DEBUG: CGI is done, checking timeout..." << std::endl;
 #endif
 
@@ -1095,51 +1153,57 @@ void Connection::checkCgi(void)
 		return;
 	}
 
-#ifdef _DEBUG
+#ifdef _DEBUG_CGI
 	std::cerr << "DEBUG: Getting CGI response..." << std::endl;
 #endif
 
 	queueWrite(_cgi->getResponse());
 
-#ifdef _DEBUG
+#ifdef _DEBUG_CGI
 	std::cerr << "DEBUG: CGI response queued, removing from event loop..." << std::endl;
 #endif
 
 	// Remove CGI from event loop before deleting
 	_cgi->removeFromEventLoop();
 
-#ifdef _DEBUG
+#ifdef _DEBUG_CGI
 	std::cerr << "DEBUG: CGI removed from event loop, deleting handler..." << std::endl;
 #endif
 
 	delete _cgi;
 	_cgi = NULL;
 
-#ifdef _DEBUG
+#ifdef _DEBUG_CGI
 	std::cerr << "DEBUG: CGI handler deleted successfully" << std::endl;
 #endif
+}
+void	Connection::markCgiReady(void)
+{
+	_pending_cgi = true;
+	if (_loop)
+		_loop->notify();
 }
 
 std::string	Connection::buildFilePath(const LocationConfig *loc, const std::string &target)
 {
 	if (!loc)
 		return (target);
-	std::string base_path = loc->getAlias();
+	std::string	base_path = loc->getAlias();
 	if (base_path.empty())
 		base_path = std::string(".");
 #ifdef _DEBUG
 	std::cerr << "DEBUG: buildFilePath - base_path: " << base_path << std::endl;
 	std::cerr << "DEBUG: buildFilePath - target: " << target << std::endl;
 #endif
-	std::string prefix = loc->getPathPrefix();
+	std::string	prefix = loc->getPathPrefix();
 	if (prefix.empty())
 		prefix = "/";
 	if (prefix[0] != '/')
 		prefix.insert(prefix.begin(), '/');
 	while (prefix.size() > 1 && prefix[prefix.size() - 1] == '/')
 		prefix.erase(prefix.size() - 1);
-	std::string relative_path = target.empty() ? std::string("/") : target;
-	if (prefix != "/" && relative_path.compare(0, prefix.size(), prefix) == 0)
+	std::string	relative_path = target.empty() ? std::string("/") : target;
+	if (prefix != "/" && !relative_path.compare(0, prefix.size(), prefix))
 	{
 		relative_path.erase(0, prefix.size());
 		if (relative_path.empty())
@@ -1180,28 +1244,28 @@ if (fd < 0)
 	}
 	(void)::close(fd);
 	// Read file content
-	std::ifstream file(file_path.c_str(), std::ios::binary);
+	std::ifstream	file(file_path.c_str(), std::ios::binary);
 	if (!file.is_open())
 	{
 		err_code = 500;
 		return (false);
 	}
-	std::string content((std::istreambuf_iterator<char>(file)),
+	std::string	content((std::istreambuf_iterator<char>(file)),
 						std::istreambuf_iterator<char>());
 	file.close();
 
 	// Determine content type
-	std::string content_type = getContentType(file_path);
+	std::string	content_type = getContentType(file_path);
 
 	// Build and send response
-	std::ostringstream oss;
+	std::ostringstream	oss;
 	oss << content.length();
-	std::string response = std::string("HTTP/1.1 200 OK\r\nDate: " + getTimeString() + "\r\nContent-Type: " + content_type + "\r\n" + "Content-Length: " + oss.str() + "\r\n" + +"Connection: " + (!_should_close ? "keep-alive\r\n" : "close\r\n") + "\r\n" + content);
+	std::string	response = std::string("HTTP/1.1 200 OK\r\nDate: " + getTimeString() + "\r\nContent-Type: " + content_type + "\r\n" + "Content-Length: " + oss.str() + "\r\n" + +"Connection: " + (!_should_close ? "keep-alive\r\n" : "close\r\n") + "\r\n" + content);
 	queueWrite(response);
-	return true;
+	return (true);
 }
 
-void Connection::sendErrorResponse(int code)
+void	Connection::sendErrorResponse(int code)
 {
 #ifdef _DEBUG
     std::cerr << "DEBUG: Sending error response: " << code << " " << CodePage::getInstance().getReason(code) << std::endl;
@@ -1211,13 +1275,13 @@ void Connection::sendErrorResponse(int code)
 		error_page = _server->getErrorPage(code);
 	if (!error_page.empty())
 	{
-		std::ifstream file(error_page.c_str());
+		std::ifstream	file(error_page.c_str());
 		if (file)
 		{
-			std::stringstream buffer;
+			std::stringstream	buffer;
 			buffer << file.rdbuf();
-			std::string body = buffer.str();
-			std::string response =
+			std::string	body = buffer.str();
+			std::string	response =
 			"HTTP/1.1 " + intToString(code) + " " +  CodePage::getInstance().getReason(code) + "\r\nDate: " + getTimeString() + "\r\nContent-Type: text/html\r\nContent-Length: " + intToString(body.size()) + "\r\nConnection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + body;
 			queueWrite(response);
 			return;
@@ -1225,13 +1289,13 @@ void Connection::sendErrorResponse(int code)
 	}
 	else
 	{
-		std::string response =
+		std::string	response =
 			"HTTP/1.1 " + intToString(code) + " " +  CodePage::getInstance().getReason(code) + "\r\nDate: " + getTimeString() + "\r\nContent-Type: text/html\r\nContent-Length: " + intToString(CodePage::getInstance().getCodePage(code).size()) + "\r\nConnection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + CodePage::getInstance().getCodePage(code);
 		queueWrite(response);
 	}
 }
 
-std::string Connection::getContentType(const std::string &file_path) const
+std::string	Connection::getContentType(const std::string &file_path) const
 {
 	if (file_path.find(".html") != std::string::npos ||
 		file_path.find(".htm") != std::string::npos) {
@@ -1251,23 +1315,21 @@ std::string Connection::getContentType(const std::string &file_path) const
 
 std::string	Connection::getFileExtension(const std::string& path) const
 {
-	size_t dot_pos = path.find_last_of('.');
-	if (dot_pos != std::string::npos && dot_pos < path.length() - 1) {
-		return path.substr(dot_pos);
-	}
-	return "";
+	size_t	dot_pos = path.find_last_of('.');
+	if (dot_pos != std::string::npos && dot_pos < path.length() - 1)
+		return (path.substr(dot_pos));
+	return (std::string());
 }
 
 std::string	Connection::intToString(int value) const
 {
-	std::ostringstream oss;
+	std::ostringstream	oss;
 	oss << value;
 	return oss.str();
 }
 
 void	Connection::onWritable(int fd)
 {
-	ssize_t	n;
 	int	events = EVENT_READ;
 	bool	should_drop = false;
 	(void)fd;
@@ -1275,24 +1337,27 @@ void	Connection::onWritable(int fd)
 	if (!_outbuf.empty())
 	{
 #ifdef	_DEBUG
-		std::cerr<<"\n===begin of response===\n"<<_outbuf<<"\n===end of response"<<std::endl;
+	std::string	preview = _outbuf.substr(0, std::min<std::string::size_type>(_outbuf.size(), 1024));
+	std::cerr<<"\n===begin of response===\n"<<preview;
+	if (preview.size() < _outbuf.size())
+		std::cerr<<"\n... [truncated]\n";
+	std::cerr<<"\n===end of response"<<std::endl;
 #endif
-		n = ::send(_fd, _outbuf.data(), static_cast<int>(_outbuf.size()), 0);
-		if (n > 0)
-			_outbuf.erase(0, static_cast<size_t>(n));
-		else if (n < 0)
-		{
-			if (errno != EAGAIN
-#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
-				&& errno != EWOULDBLOCK
-#endif
-			)
-			{
-				this->onError(_fd);
-				_outbuf.clear();
-				should_drop = true;
-			}
-		}
+	ssize_t n = ::send(_fd, _outbuf.data(), static_cast<int>(_outbuf.size()), 0);
+	if (n > 0)
+	{
+		_outbuf.erase(0, static_cast<size_t>(n));
+	}
+	else if (n == 0)
+	{
+		_should_close = true;
+	}
+	else
+	{
+		this->onError(_fd);
+		_outbuf.clear();
+		should_drop = true;
+	}
 	}
 	if (should_drop)
 		return;
@@ -1302,7 +1367,7 @@ void	Connection::onWritable(int fd)
 			events = events | EVENT_WRITE;
 		_loop->set_events(_fd, events);
 	}
-	if (_should_close && _outbuf.empty())
+	if (_should_close && _outbuf.empty() && !_cgi)
 	{
 		if (_loop && _engaged)
 		{
@@ -1365,9 +1430,12 @@ void	Connection::onTick(int fd)
 {
 	(void)fd;
 
-	if (_cgi)
+	if (_pending_cgi || _cgi)
+	{
+		_pending_cgi = false;
 		checkCgi();
-	if (_should_close && _outbuf.empty())
+	}
+	if (_should_close && _outbuf.empty() && !_cgi)
 	{
 		if (_loop && _engaged)
 		{
@@ -1382,13 +1450,13 @@ void	Connection::onTick(int fd)
 	}
 }
 
-bool	Connection::handleMultipart(const HttpRequest &request, std::string &filename, std::string &content)
+bool	Connection::handleMultipart(const HttpRequest &request, std::string &filename, std::size_t &content_offset, std::size_t &content_length)
 {
 	const std::string	content_type = request.getHeader("content-type");
 	if (content_type.empty())
 		return (false);
 	std::string	lower_content_type = toLower(content_type);
-	size_t	boundary_pos = lower_content_type.find("boundary=");
+	size_t		boundary_pos = lower_content_type.find("boundary=");
 	if (boundary_pos == std::string::npos)
 		return (false);
 	std::string	boundary = content_type.substr(boundary_pos + 9);
@@ -1396,13 +1464,16 @@ bool	Connection::handleMultipart(const HttpRequest &request, std::string &filena
 	if (semicolon != std::string::npos)
 		boundary.erase(semicolon);
 	boundary = trim(boundary);
-	if (!boundary.empty() && boundary[0] == '"' && boundary[boundary.size() - 1] == '"')
+	if (!boundary.empty() && boundary[0] == '"'
+	&& boundary[boundary.size() - 1] == '"')
 		boundary = boundary.substr(1, boundary.size() - 2);
 	if (boundary.empty())
 		return (false);
 	const std::string	boundary_marker = std::string("--") + boundary;
 	const std::string	&body = request.getBody();
-	size_t	search_pos = 0;
+	size_t				search_pos = 0;
+	content_offset = 0;
+	content_length = 0;
 	while (search_pos < body.size())
 	{
 		size_t	part_start = body.find(boundary_marker, search_pos);
@@ -1422,9 +1493,10 @@ bool	Connection::handleMultipart(const HttpRequest &request, std::string &filena
 		if (next_boundary == std::string::npos)
 			break;
 		size_t	data_end = next_boundary;
-		if (data_end >= 2 && body[data_end - 2] == '\r' && body[data_end - 1] == '\n')
+		if (data_end >= 2 && body[data_end - 2] == '\r'
+		&& body[data_end - 1] == '\n')
 			data_end -= 2;
-		std::string	part_data = body.substr(cursor, data_end - cursor);
+		size_t	data_start = cursor;
 		cursor = next_boundary + boundary_marker.size();
 		bool	final_boundary = false;
 		if (cursor + 2 <= body.size() && !body.compare(cursor, 2, "--"))
@@ -1436,8 +1508,8 @@ bool	Connection::handleMultipart(const HttpRequest &request, std::string &filena
 			cursor += 2;
 		search_pos = cursor;
 		std::istringstream	header_stream(header_block);
-		std::string	header_line;
-		std::string	disposition;
+		std::string			header_line;
+		std::string			disposition;
 		while (std::getline(header_stream, header_line))
 		{
 			if (!header_line.empty() && header_line[header_line.size() - 1] == '\r')
@@ -1455,7 +1527,7 @@ bool	Connection::handleMultipart(const HttpRequest &request, std::string &filena
 		if (!disposition.empty())
 		{
 			std::istringstream	disp_stream(disposition);
-			std::string	token;
+			std::string			token;
 			while (std::getline(disp_stream, token, ';'))
 			{
 				std::string	trimmed = trim(token);
@@ -1467,7 +1539,8 @@ bool	Connection::handleMultipart(const HttpRequest &request, std::string &filena
 					if (!value.empty() && value[0] == '"' && value[value.size() - 1] == '"')
 						value = value.substr(1, value.size() - 2);
 					filename = value;
-					content.swap(part_data);
+					content_offset = data_start;
+					content_length = (data_end > data_start ? data_end - data_start : 0);
 					return (true);
 				}
 			}
@@ -1478,32 +1551,36 @@ bool	Connection::handleMultipart(const HttpRequest &request, std::string &filena
 	return (false);
 }
 
-bool	Connection::uploadFile(const HttpRequest &request, const LocationConfig *loc, std::string &response_body, int &status_code, const std::string &method)
+bool	Connection::uploadFile
+(const HttpRequest &request, const LocationConfig *loc,
+std::string &response_body, int &status_code, const std::string &method)
 {
 	if (!loc)
 	{
 		status_code = 500;
 		return (false);
 	}
-	const std::string upload_dir = loc->getAlias();
+	const std::string	upload_dir = loc->getAlias();
 	if (upload_dir.empty())
 	{
 		status_code = 400;
 		return (false);
 	}
-	struct stat st;
+	struct stat	st;
 	std::memset(&st, 0, sizeof(st));
 	if (stat(upload_dir.c_str(), &st) || !S_ISDIR(st.st_mode))
 	{
 		status_code = 400;
 		return (false);
 	}
-	std::string filename;
-	std::string file_data;
-	const std::string content_type = request.getHeader("content-type");
+	std::string	filename;
+	const std::string	&body = request.getBody();
+	std::size_t	body_offset = 0;
+	std::size_t	body_length = 0;
+	const std::string	content_type = request.getHeader("content-type");
 	if (content_type.find("multipart/form-data") != std::string::npos)
 	{
-		if (!Connection::handleMultipart(request,filename, file_data))
+		if (!Connection::handleMultipart(request, filename, body_offset, body_length))
 		{
 			status_code = 400;
 			return (false);
@@ -1511,7 +1588,8 @@ bool	Connection::uploadFile(const HttpRequest &request, const LocationConfig *lo
 	}
 	else
 	{
-		file_data = request.getBody();
+		body_offset = 0;
+		body_length = body.size();
 		if (!extractFilename(request.getPath(), loc->getPathPrefix(), filename))
 			filename = request.getUploadFilename();
 	}
@@ -1524,31 +1602,52 @@ bool	Connection::uploadFile(const HttpRequest &request, const LocationConfig *lo
 		return (false);
 	}
 	std::string	destination = joinPath(upload_dir, cleanFilename);
-	/* For POST requests, if a file exists already, it must be rejected
-	*/
-	if (!::access(destination.c_str(), F_OK) && method == "POST")
+	if (!::access(destination.c_str(), F_OK))
 	{
-		status_code = 409;
-		return (false);
-	}
-	else if (method == "PUT")
-	{
-		if (std::remove(destination.c_str()) < 0)
+		if (method == "POST")
 		{
-			if (errno == ENOENT)
-			{}
-			else
+			std::string	base = cleanFilename;
+			unsigned int	attempts = 0;
+			while (!::access(destination.c_str(), F_OK))
 			{
-				#ifdef	_DEBUG
-				std::cerr<<"std::remove failed: "<<destination<<strerror(errno)<<std::endl;
-				#endif
-				status_code = 400;
+				std::string	candidate = base + "_" + getUniqueTimeString();
+				std::string	sanitized;
+				if (!sanitizeFilename(candidate, sanitized))
+				{
+					status_code = 400;
+					return (false);
+				}
+				cleanFilename.swap(sanitized);
+				destination = joinPath(upload_dir, cleanFilename);
+				if (++attempts > 64)
+				{
+					status_code = 500;
+					return (false);
+				}
+			}
+		}
+		else if (method == "PUT")
+		{
+			if (std::remove(destination.c_str()) < 0)
+			{
+				if (errno != ENOENT)
+				{
+					#ifdef	_DEBUG
+					std::cerr<<"std::remove failed: "<<destination<<strerror(errno)<<std::endl;
+					#endif
+					status_code = 400;
+					return (false);
+				}
+			}
+			if (!::access(destination.c_str(), F_OK))
+			{
+				status_code = 500;
 				return (false);
 			}
 		}
-		if (method == "PUT" && !::access(destination.c_str(), F_OK))
+		else
 		{
-			status_code = 500;
+			status_code = 409;
 			return (false);
 		}
 	}
@@ -1561,12 +1660,12 @@ bool	Connection::uploadFile(const HttpRequest &request, const LocationConfig *lo
 		status_code = 500;
 		return (false);
 	}
-	if (!file_data.empty())
-		output.write(&file_data[0], static_cast<std::streamsize>(file_data.size()));
+	if (body_length > 0)
+		output.write(body.c_str() + body_offset, static_cast<std::streamsize>(body_length));
 	output.close();
 	std::ostringstream	oss;
 	oss<<"File stored successfully\nFilename: "<<cleanFilename
-	<<"\nSize: "<<file_data.size()<<" bytes\nLocation: "<<destination<<"\n";
+	<<"\nSize: "<<body_length<<" bytes\nLocation: "<<destination<<"\n";
 	response_body = oss.str();
 	status_code = 201;
 	return (true);

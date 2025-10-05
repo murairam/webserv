@@ -31,16 +31,13 @@ bool	SignalHandler::_hook_all(void)
 	size_t	i = 0;
 	while (i < _signals.size())
 	{
-#ifdef	USE_SIGACTION
 		struct sigaction	sa;
+
+		std::memset(&sa, 0, sizeof(sa));
 		sa.sa_flags = SA_SIGINFO | SA_RESTART;
 		sa.sa_handler = &SignalHandler::_handler;
 		if (::sigemptyset(&sa.sa_mask) || ::sigaction(_signals[i], &sa, 0))
 			return (false);
-#else
-		if (::signal(_signals[i], &SignalHandler::_handler) == SIG_ERR)
-			return (false);
-#endif
 		i++;
 	}
 	return (true);
@@ -51,15 +48,13 @@ void	SignalHandler::_unhook_all(void)
 	size_t	i = 0;
 	while (i < _signals.size())
 	{
-#ifdef	USE_SIGACTION
 		struct sigaction	sa;
+
+		std::memset(&sa, 0, sizeof(sa));
 		sa.sa_flags = 0;
 		sa.sa_handler = SIG_DFL;
 		(void)::sigemptyset(&sa.sa_mask);
 		(void)::sigaction(_signals[i], &sa, 0);
-#else
-		(void)::signal(_signals[i], SIG_DFL);
-#endif
 		i++;
 	}
 }
@@ -158,11 +153,11 @@ bool	SignalHandler::checkStatus(void)
 		{
 			ssize_t	n = ::read(_pipefd[0], buf, sizeof(buf));
 			if (n > 0)
+			{
+				if (static_cast<size_t>(n) < sizeof(buf))
+					break;
 				continue;
-			if (!n)
-				break;
-			if (errno == EINTR)
-				continue;
+			}
 			break;
 		}
 	}

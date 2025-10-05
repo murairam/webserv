@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 16:17:11 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/30 15:15:00 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/04 12:15:52 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -287,5 +287,6 @@ std::string	getUniqueTimeString(void)
 	static unsigned long	counter = 0;
 	std::ostringstream	oss;
 	oss<<"uploaded_at_"<<getTimeString()<<"_"<<counter;
+	counter++;
 	return (oss.str());
 }

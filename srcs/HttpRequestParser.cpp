@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:35:23 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/03 11:01:52 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/04 12:15:17 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -276,6 +276,7 @@ bool HttpRequestParser::parseChunkedBody(std::istream &input, HttpRequest &reque
     }
 
     request.setBody(body);
+	request.setContentLength(static_cast<long>(body.size()));
     return (true);
 }
 

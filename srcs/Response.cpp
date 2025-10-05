@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Response.cpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 01:24:56 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/22 16:16:29 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/02 11:20:25 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,8 +106,10 @@ std::string	Response::serialize(void) const
 	std::string	reason = _code_page().getReason(_status_code);
 
 	response = "HTTP/1.1 " + intToString(_status_code) + " " + reason + "\r\n";
-	std::map<std::string, std::string>::const_iterator	it = _headers.begin();
-	while (it != _headers.end())
+	std::map<std::string, std::string>		headers = _headers;
+	headers["Date"] = getTimeString();
+	std::map<std::string, std::string>::const_iterator	it = headers.begin();
+	while (it != headers.end())
 	{
 		response += it->first + ": " + it->second + "\r\n";
 		++it;
@@ -184,8 +186,15 @@ std::string	Response::generateDirectoryListingHTML(const std::string &path, cons
 	Directory		dir(path);
 	std::string		entry;
 
-	html = "<!DOCTYPE html>\n<html><head><title>Index of " + escapeHTML(uri) + "</title></head>\n";
-	html += "<body><h1>Index of " + escapeHTML(uri) + "</h1><hr><pre>\n";
+	html = "<!DOCTYPE html>\n<html><head><title>Index of " + escapeHTML(uri) + "</title></head>\n<body><h1>Index of " + escapeHTML(uri) + "</h1><hr><pre>\n";
+
+	std::string	base_uri = uri;
+	if (base_uri.empty())
+		base_uri = "/";
+	if (base_uri[0] != '/')
+		base_uri.insert(base_uri.begin(), '/');
+	if (base_uri[base_uri.size() - 1] != '/')
+		base_uri += '/';
 
 	if (uri != "/" && !uri.empty())
 	{
@@ -200,17 +209,22 @@ std::string	Response::generateDirectoryListingHTML(const std::string &path, cons
 		else
 			parent = parent.substr(0, pos) + "/";
 
-		html += "<a href=\"" + parent + "\">../</a>\n";
+		html += "<a href=\"" + escapeHTML(parent) + "\">../</a>\n";
 	}
 
 	dir.ft_opendir();
 	while (!(entry = dir.nextEntry()).empty())
 	{
 		std::string	full_path = path + "/" + entry;
+		std::string	href = base_uri;
+		href += entry;
 		if (isDirectory(full_path))
-			html += "<a href=\"" + entry + "/\">" + entry + "/</a>\n";
+		{
+			href += '/';
+			html += "<a href=\"" + escapeHTML(href) + "\">" + escapeHTML(entry) + "/</a>\n";
+		}
 		else
-			html += "<a href=\"" + entry + "\">" + entry + "</a>\n";
+			html += "<a href=\"" + escapeHTML(href) + "\">" + escapeHTML(entry) + "</a>\n";
 	}
 	html += "</pre><hr></body></html>";
 	dir.ft_closedir();

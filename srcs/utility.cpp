@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 15:34:00 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/30 18:39:55 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/04 12:23:56 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,6 +97,16 @@ bool	set_nonblock_fd_nothrow(int fd)
 	return (true);
 }
 
+bool	set_cloexec_fd_nothrow(int fd)
+{
+	int	flags = ::fcntl(fd, F_GETFD, 0);
+	if (flags < 0)
+		return (false);
+	if (::fcntl(fd, F_SETFD, flags | FD_CLOEXEC) < 0)
+		return (false);
+	return (true);
+}
+
 bool	set_nonblock_fd(int fd, std::string position)
 {
 	bool	ret = true;
@@ -117,7 +127,7 @@ bool	set_nonblock_fd(int fd, std::string position)
 	catch (...)
 	{
 		std::cerr<<"\n---Non-standard exception caught"<<std::endl;
-	ret = false;
+		ret = false;
 	}
 	return (ret);
 }
