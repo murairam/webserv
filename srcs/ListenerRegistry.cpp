@@ -61,6 +61,7 @@ void	ListenerRegistry::prepare
 int		ListenerRegistry::engage_all(EventLoop &loop, int backlog, ConnectionManager &manager)
 {
 	int	count = 0;
+	bool	had_failure = false;
 	_fd_to_server.clear();
 	_fd_to_config.clear();
 	_vec_listener.clear();
@@ -84,8 +85,12 @@ int		ListenerRegistry::engage_all(EventLoop &loop, int backlog, ConnectionManage
 			_vec_listener.push_back(se._listener);
 			count++;
 		}
+		else
+			had_failure = true;
 		it++;
 	}
+	if (had_failure)
+		throw std::runtime_error("\n---Failed to open one or more listening sockets, probably duplicated ports in the config file ?");
 	return (count);
 }
 void	ListenerRegistry::disengage_all(EventLoop &loop)
