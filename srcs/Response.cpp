@@ -266,6 +266,12 @@ std::string	Response::getMimeType(const std::string &extension) const
 		return ("text/plain");
 	else if (extension == ".ico")
 		return ("image/x-icon");
+	else if (extension == ".opus")
+		return ("audio/ogg; codecs=\"opus\"");
+	else if (extension == ".mp4")
+		return ("audio/mp4");
+	else if (extension == ".mp3")
+		return ("audio/mp3");
 	else
 		return ("application/octet-stream");
 }
