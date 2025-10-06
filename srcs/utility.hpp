@@ -47,5 +47,5 @@ std::string	joinPath(const std::string &dir, const std::string &filename);
 bool	sanitizeFilename(const std::string &raw, std::string &name);
 bool	extractFilename(const std::string &path, const std::string &locationPrefix, std::string &filename);
 bool	matchPath(const std::string	&path, const std::string &prefix);
-
+std::string	expandPath(const std::string &path);
 #endif

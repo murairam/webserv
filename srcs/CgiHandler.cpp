@@ -28,13 +28,12 @@ const std::string &script, const LocationConfig *loc, Connection *owner)
 {
 	_stdin_pipe[0] = _stdin_pipe[1] = -1;
 	_stdout_pipe[0] = _stdout_pipe[1] = -1;
-if (!_cgi_path.empty() && _cgi_path[0] != '/')
-        {
-                char    resolved[PATH_MAX];
-
-                if (::realpath(_cgi_path.c_str(), resolved))
-                        _cgi_path = resolved;
-        }
+	if (!_cgi_path.empty())
+	{
+		std::string	fullpath = expandPath(_cgi_path);
+		if (!fullpath.empty() && fullpath != ".")
+			_cgi_path = fullpath;
+	}
 	_env = req.toCgiEnvironment();
 #ifdef	_DEBUG
 	std::map<std::string, std::string>::const_iterator cl = _env.find("CONTENT_LENGTH");
@@ -62,12 +61,10 @@ if (!_cgi_path.empty() && _cgi_path[0] != '/')
 		close(fd);
 	}
 #endif
-std::string script_real = script;
-	{
-		char	resolved[PATH_MAX];
-		if (::realpath(script.c_str(), resolved))
-			script_real.assign(resolved);
-	}
+
+	std::string script_real = expandPath(script);
+	if (script_real.empty() || script_real == ".")
+		script_real = script;
 	if (!req.getPath().empty())
 		_env["PATH_INFO"] = req.getPath();
 	else

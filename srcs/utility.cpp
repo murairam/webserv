@@ -257,3 +257,65 @@ bool	matchPath(const std::string &path, const std::string &prefix)
 		return (true);
 	return (path[prefix.size()] == '/');
 }
+
+std::string	expandPath(const std::string &path)
+{
+	if (path.empty())
+		return (path);
+	bool	absolute = (path[0] == '/');
+	std::vector<std::string>	components;
+	std::string::size_type	i = 0;
+
+	while (i < path.size())
+	{
+		while (i < path.size() && path[i] == '/')
+			++i;
+		std::string::size_type	start = i;
+		while (i < path.size() && path[i] != '/')
+			++i;
+		if (start == i)
+			continue;
+		std::string	part = path.substr(start, i - start);
+		if (part == ".")
+			continue;
+		if (part == "..")
+		{
+			if (!components.empty() && components.back() != "..")
+			{
+				components.pop_back();
+				continue;
+			}
+			if (!absolute)
+				components.push_back(part);
+			continue;
+		}
+		components.push_back(part);
+	}
+
+	std::string	result;
+	if (absolute)
+		result.push_back('/');
+	for (std::vector<std::string>::size_type idx = 0; idx < components.size(); ++idx)
+	{
+		if (absolute)
+		{
+			if (result.size() > 1)
+				result.push_back('/');
+			result.append(components[idx]);
+		}
+		else
+		{
+			if (idx > 0)
+				result.push_back('/');
+			result.append(components[idx]);
+		}
+	}
+	if (result.empty())
+	{
+		if (absolute)
+			result = "/";
+		else if (components.empty())
+			result = ".";
+	}
+	return (result);
+}
