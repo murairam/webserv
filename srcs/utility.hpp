@@ -48,4 +48,5 @@ bool	sanitizeFilename(const std::string &raw, std::string &name);
 bool	extractFilename(const std::string &path, const std::string &locationPrefix, std::string &filename);
 bool	matchPath(const std::string	&path, const std::string &prefix);
 std::string	expandPath(const std::string &path);
+bool	set_cloexec_fd(int fd, std::string position = std::string());
 #endif

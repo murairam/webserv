@@ -96,7 +96,7 @@ _fd(-1), _engaged(false), _loop(0), _conn_mgr(0), _server_cfg(0), _server_config
 bool	Listener::listen(int backlog)
 {
 	struct in_addr		ip;
-	int					s;
+	int					s = -1;
 	int					set = 1;
 	struct sockaddr_in	addr;
 	bool				ret = true;
@@ -106,13 +106,13 @@ bool	Listener::listen(int backlog)
 		s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (s < 0)
 			throw SysError ("\n---socket failed (Listener.cpp:129)", errno);
-		if (::setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
-			throw SysError ("\n---setsockopt failed (Listener.cpp:132)", errno);
-		if (!set_nonblock_fd(s, std::string("Listener.cpp:110")))
+		if (!set_nonblock_fd(s))
 		{
 			(void)::close(s);
-			ret = false;
-		}
+			return false;
+		}	
+		if (::setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
+			throw SysError ("\n---setsockopt failed (Listener.cpp:132)", errno);
 		std::memset(&addr, 0, sizeof(addr));
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(_port);
@@ -159,7 +159,7 @@ void	Listener::onReadable(int fd)
 		// and let poll notify us when there's a new connection.
 		if (client_fd < 0)
 			break;
-		if (!set_nonblock_fd(client_fd))
+		if (!set_nonblock_fd(client_fd, "Listener.cpp:163"))
 		{
 			(void)::close(client_fd);
 			continue;

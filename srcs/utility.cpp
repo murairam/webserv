@@ -107,6 +107,31 @@ bool	set_cloexec_fd_nothrow(int fd)
 	return (true);
 }
 
+bool	set_cloexec_fd(int fd, std::string position)
+{
+	bool	ret = true;
+
+	try
+	{
+		int	flags = ::fcntl(fd, F_GETFD, 0);
+		if (flags < 0)
+			throw SysError("\n---fcntl(fd, F_GETFD, 0) failed (" + position + ")", errno);
+		if (::fcntl(fd, F_SETFD, flags | FD_CLOEXEC) < 0)
+			throw SysError("\n---fcntl(fd, F_SETFD, flags | O_NONBLOCK, 0) failed (" + position + ")", errno);
+	}
+	catch (const std::exception &e)
+	{
+		std::cerr<<e.what()<<std::endl;
+		ret = false;
+	}
+	catch (...)
+	{
+		std::cerr<<"\n---Non-standard exception caught"<<std::endl;
+		ret = false;
+	}
+	return (ret);
+}
+
 bool	set_nonblock_fd(int fd, std::string position)
 {
 	bool	ret = true;

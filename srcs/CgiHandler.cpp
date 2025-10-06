@@ -47,7 +47,7 @@ const std::string &script, const LocationConfig *loc, Connection *owner)
 	else
 		std::cerr << "DEBUG: CGI ENV missing HTTP_X_SECRET_HEADER_FOR_TEST" << std::endl;
 	std::cerr<<"The path of the script being sent to cgi is: "<<script<<std::endl;
-	int	fd = ::open(script.c_str(), O_RDONLY | O_NOFOLLOW);
+	int	fd = ::open(script.c_str(), O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
 	if (fd < 0)
 		std::cerr<<"DEBUG: unable to open script for peek: "<<script<<std::endl;
 	else
@@ -185,6 +185,7 @@ bool	CgiHandler::execute(EventLoop &loop)
 		std::cerr<<"pipe fucked up"<<std::strerror(errno)<<std::endl;
 		return (false);
 	}
+	(void)::set_nonblock_fd(_stdin_pipe[1]);
 	if (::pipe(_stdout_pipe) < 0)
 	{
 		(void)::close(_stdin_pipe[0]);
@@ -193,12 +194,12 @@ bool	CgiHandler::execute(EventLoop &loop)
 		return (false);
 	}
 
-	(void)set_cloexec_fd_nothrow(_stdin_pipe[0]);
-	(void)set_cloexec_fd_nothrow(_stdout_pipe[0]);
-	(void)set_cloexec_fd_nothrow(_stdin_pipe[1]);
-	(void)set_cloexec_fd_nothrow(_stdout_pipe[1]);
-	(void)set_nonblock_fd_nothrow(_stdin_pipe[1]);
-	(void)set_nonblock_fd_nothrow(_stdout_pipe[0]);
+	(void)set_nonblock_fd(_stdout_pipe[0], "CgiHandler.cpp:197");
+	(void)set_cloexec_fd(_stdin_pipe[0], "CgiHandler.cpp:199");
+	(void)set_cloexec_fd(_stdout_pipe[0], "CgiHandler.cpp:200");
+	(void)set_cloexec_fd(_stdin_pipe[1], "CgiHandler.cpp:201");
+	(void)set_cloexec_fd(_stdout_pipe[1], "CgiHandler.cpp:202");
+
 
 	_pid = ::fork();
 	if (_pid < 0)
@@ -247,7 +248,6 @@ bool	CgiHandler::execute(EventLoop &loop)
 		char	**envp = buildEnv();
 		std::cerr<<"CGI executable path: "<<_cgi_path<<std::endl;
 		::execve(_cgi_path.c_str(), argv, envp);
-		std::string	err_msg = std::strerror(errno);
 		std::cerr<<"\n---EXECVE RETURNED ! CGI FUCKED UP ! "<<std::strerror(errno)<<std::endl;
 		freeEnv(envp);
 		std::exit(1);

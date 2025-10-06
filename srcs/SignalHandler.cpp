@@ -139,8 +139,8 @@ bool	SignalHandler::_install_handlers(void)
 		return (false);
 	if (::pipe(_pipefd))
 		return (false);
-	if (!set_nonblock_fd(_pipefd[0], std::string("SignalHandler.cpp:73"))
-		|| !set_nonblock_fd(_pipefd[1], std::string("SignalHandler.cpp:74"))
+	if (!set_nonblock_fd(_pipefd[0], std::string("SignalHandler.cpp:142"))
+		|| !set_nonblock_fd(_pipefd[1], std::string("SignalHandler.cpp:143"))
 		|| !_hook_all())
 	{
 		(void)::close(_pipefd[0]);
