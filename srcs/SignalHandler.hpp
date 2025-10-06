@@ -28,8 +28,15 @@ class	SignalHandler
 		static int						_pipefd[2];
 
 		std::vector<int>				_signals;
+		std::vector<int>				_ignored_signals;
 		bool							_installed;
+#ifdef	_USE_SIGACTION
+		static void						_siginfo_handler(int sig, siginfo_t *info, void *context);
+		static void						_siginfo_ignored_handler(int sig, siginfo_t *info, void *context);
+#else
 		static void						_handler(int sig);
+		static void						_ignored_handler(int sig);
+#endif
 		bool							_hook_all(void);
 		void							_unhook_all(void);
 		bool							_install_handlers(void);
@@ -40,6 +47,7 @@ class	SignalHandler
 		SignalHandler	&operator=(const SignalHandler &other);
 
 		void	addSignal(int sig);
+		void	ignoreSignal(int sig);
 		bool	install(void);
 		void	uninstall(void);
 		bool	isInstalled(void) const;

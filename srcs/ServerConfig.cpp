@@ -58,7 +58,7 @@ const std::vector<LocationConfig>	&ServerConfig::getLocations(void) const
 
 /*	Longest prefix matach
 */
-const LocationConfig *ServerConfig::matchLocation(const std::string &path) const
+const LocationConfig	*ServerConfig::matchLocation(const std::string &path) const
 {
 	if (path.empty())
 		return (0);

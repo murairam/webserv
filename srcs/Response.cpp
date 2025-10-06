@@ -254,24 +254,88 @@ std::string	Response::getMimeType(const std::string &extension) const
 		return ("text/html");
 	else if (extension == ".css")
 		return ("text/css");
+	else if (extension == ".csv")
+		return ("text/csv");
 	else if (extension == ".js")
 		return ("application/javascript");
+	else if (extension == ".json")
+		return ("application/json");
+	else if (extension == ".xml")
+		return ("application/xml");
+	else if (extension == ".rar")
+		return ("application/vnd.rar");
+	else if (extension == ".zip")
+		return ("application/zip");
+	else if (extension == ".gz")
+		return ("application/gzip");
+	else if (extension == ".svg")
+		return ("image/svg+xml");
+	else if (extension == ".ico")
+		return ("image/vnd.microsfot.icon");
+	else if (extension == ".tar")
+		return ("application/x-tar");
+	else if (extension == ".webmanifest")
+		return ("application/manifest+json");
+	else if (extension == ".xhtml")
+		return ("application/xhtml+xml");
+	else if (extension == ".xls")
+		return ("application/vnd.ms-excel");
+	else if (extension == ".7z")
+		return ("application/x-7z-compressed");
+	else if (extension == ".xlsx")
+		return ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	else if (extension == ".pdf")
+		return ("application/pdf");
+	else if (extension == ".tiff" || extension == ".tif")
+		return ("image/tiff");
+	else if (extension == ".wav")
+		return ("audio/wav");
 	else if (extension == ".png")
 		return ("image/png");
 	else if (extension == ".jpg" || extension == ".jpeg")
 		return ("image/jpeg");
+	else if (extension == ".sh")
+		return ("application/x-sh");
+	else if (extension == ".ppt")
+		return ("application/vnd.ms-powerpoint");
+	else if (extension == ".pptx")
+		return ("application/vnd.openxmlformats-officedocument.presentationml.presentation");
 	else if (extension == ".gif")
 		return ("image/gif");
 	else if (extension == ".txt")
 		return ("text/plain");
 	else if (extension == ".ico")
 		return ("image/x-icon");
+	else if (extension == ".avi")
+		return ("video/x-msvideo");
+	else if (extension == ".ttf")
+		return ("font/ttf");
+	else if (extension == ".3gp")
+		return ("video/3gpp");
+	else if (extension == ".oga")
+		return ("audio/ogg");
+	else if (extension == ".ogx")
+		return ("application/ogg");
+	else if (extension == ".ogv")
+		return ("video/ogg");
 	else if (extension == ".opus")
 		return ("audio/ogg; codecs=\"opus\"");
 	else if (extension == ".mp4")
-		return ("audio/mp4");
+		return ("video/mp4");
+	else if (extension == ".mpeg")
+		return ("video/mpeg");
+	else if (extension == ".rtf")
+		return ("application/rtf");
 	else if (extension == ".mp3")
-		return ("audio/mp3");
+		return ("audio/mpeg");
+	else if (extension == ".ts")
+		return ("video/mp2t");
+	else if (extension == ".mpkg")
+		return ("application/vnd.apple.installer+xml");
+	else if (extension == ".odp")
+		return ("application/vnd.oasis.opendocument.presentation");
+	else if (extension == ".otf")
+		return ("font/otf");
 	else
 		return ("application/octet-stream");
 }

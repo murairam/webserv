@@ -39,9 +39,8 @@ off_t	getFileSize(const std::string &path)
 bool	isDirectory(const std::string &path)
 {
 	struct stat	st;
-	int			r;
+	int			r = ::stat(path.c_str(), &st);
 
-	r = ::stat(path.c_str(), &st);
 	if (r)
 		return (false);
 	return (S_ISDIR(st.st_mode) != 0);
@@ -90,6 +89,7 @@ std::string	MethodMaskToToken(int method)
 bool	set_nonblock_fd_nothrow(int fd)
 {
 	int	flags = ::fcntl(fd, F_GETFL, 0);
+	
 	if (flags < 0)
 		return (false);
 	if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)

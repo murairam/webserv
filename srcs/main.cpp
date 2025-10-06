@@ -63,7 +63,7 @@ int	main(int argc, char **argv, char **envp)
 		if (argc > 1)
 			cfg = ConfigLoader(argv[1]);
 		else
-			cfg = ConfigLoader(std::string("./assets/server_cfgs/GET_ONLY.cfg"));
+			cfg = ConfigLoader(std::string("./assets/server_cfgs/example.cfg"));
 #ifdef	_DEBUG
 		cfg.debug();
 #endif
