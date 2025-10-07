@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   CgiHandler.cpp                                     :+:      :+:    :+:   */
+/*   CGIHandler.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/02 12:59:07 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/04 13:44:54 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/07 12:18:04 by mmiilpal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,11 +32,17 @@ const std::string &script, const LocationConfig *loc, Connection *owner)
 	{
 		std::string	fullpath = expandPath(_cgi_path);
 		if (!fullpath.empty() && fullpath != ".")
+		{
 #ifdef	_TESTER_VERSION
-			_cgi_path = getRealpath() + "/" + fullpath;
+			// Only prepend working directory for relative paths
+			if (fullpath[0] != '/')
+				_cgi_path = getRealpath() + "/" + fullpath;
+			else
+				_cgi_path = fullpath;
 #else
 			_cgi_path = fullpath;
 #endif
+		}
 	}
 	_env = req.toCgiEnvironment();
 #ifdef	_DEBUG
@@ -69,6 +75,11 @@ const std::string &script, const LocationConfig *loc, Connection *owner)
 	std::string script_real = expandPath(script);
 	if (script_real.empty() || script_real == ".")
 		script_real = script;
+
+	// Ensure SCRIPT_FILENAME is absolute for PHP CGI compatibility
+	if (!script_real.empty() && script_real[0] != '/')
+		script_real = getRealpath() + "/" + script_real;
+
 	if (!req.getPath().empty())
 		_env["PATH_INFO"] = req.getPath();
 	else
@@ -89,7 +100,7 @@ const std::string &script, const LocationConfig *loc, Connection *owner)
 	if (!req.getQuery().empty())
 		request_uri += "?" + req.getQuery();
 	_env["REQUEST_URI"] = request_uri;
-	
+
 	if (loc)
 	{
 		_workdir = loc->getAlias();
@@ -232,7 +243,7 @@ bool	CgiHandler::execute(EventLoop &loop)
 			}
 		}
 
-		if (::dup2(_stdin_pipe[0], STDIN_FILENO) < 0 
+		if (::dup2(_stdin_pipe[0], STDIN_FILENO) < 0
 			|| ::dup2(_stdout_pipe[1], STDOUT_FILENO) < 0)
 		{
 			std::cerr<<"dup2 fucked up"<<std::strerror(errno)<<std::endl;
@@ -448,7 +459,7 @@ void	CgiHandler::onHangup(int fd)
 void	CgiHandler::onTick(int fd)
 {
 	(void)fd;
-	
+
 	if (isTimeout())
 	{
 		removeFromEventLoop();

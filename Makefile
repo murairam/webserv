@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: yanli <yanli@student.42.fr>                +#+  +:+       +#+         #
+#    By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/09/13 12:31:48 by yanli             #+#    #+#              #
-#    Updated: 2025/10/04 16:32:58 by yanli            ###   ########.fr        #
+#    Updated: 2025/10/07 12:38:55 by mmiilpal         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@ NAME			= webserv
 
 CXX				= c++
 
-CXXFLAGS		= -Wall -Wextra -Werror -std=c++98 -D_TESTER_VERSION
+CXXFLAGS		= -Wall -Wextra -Werror -std=c++98
 
 SRCS_DIR		= ./srcs
 
