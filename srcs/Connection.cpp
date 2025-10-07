@@ -1606,6 +1606,7 @@ std::string &response_body, int &status_code, const std::string &method)
 	{
 		if (method == "POST")
 		{
+#ifdef	_TESTER_VERSION
 			std::string	base = cleanFilename;
 			unsigned int	attempts = 0;
 			while (!::access(destination.c_str(), F_OK))
@@ -1625,6 +1626,10 @@ std::string &response_body, int &status_code, const std::string &method)
 					return (false);
 				}
 			}
+#else
+			status_code = 409;
+			return (false);
+#endif
 		}
 		else if (method == "PUT")
 		{
@@ -1644,11 +1649,6 @@ std::string &response_body, int &status_code, const std::string &method)
 				status_code = 500;
 				return (false);
 			}
-		}
-		else
-		{
-			status_code = 409;
-			return (false);
 		}
 	}
 	std::ofstream	output(destination.c_str(), std::ios::binary | std::ios::trunc);
