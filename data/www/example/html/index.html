@@ -1,95 +1,471 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mari & Yang Webserver</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mari & Yang Webserv Playground</title>
     <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #111827;
+            --bg-alt: #1f2937;
+            --panel: rgba(17, 24, 39, 0.82);
+            --accent: #38bdf8;
+            --accent-strong: #0ea5e9;
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+            --shadow: 0 30px 60px rgba(15, 23, 42, 0.32);
+            font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
             margin: 0;
-            padding: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            min-height: 100vh;
+            background: radial-gradient(circle at top, #1f2937 0%, #0f172a 50%, #030712 100%);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            padding: clamp(1.5rem, 3vw + 1rem, 4rem);
         }
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            color: #333;
-            max-width: 1200px;
-            margin: 0 auto;
+
+        main {
+            width: min(1100px, 100%);
+            backdrop-filter: blur(18px);
+            background: var(--panel);
+            border-radius: 28px;
+            padding: clamp(1.75rem, 2.5vw + 1rem, 3rem);
+            box-shadow: var(--shadow);
         }
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }
-        .feature-card {
-            background: #fff;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            padding: 20px;
+
+        header {
             text-align: center;
-            transition: transform 0.3s, box-shadow 0.3s;
         }
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-            border-color: #007bff;
+
+        header h1 {
+            margin: 0;
+            font-size: clamp(2.2rem, 4vw, 3rem);
+            letter-spacing: -0.02em;
         }
-        .feature-button {
-            background: linear-gradient(45deg, #007bff, #0056b3);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 25px;
+
+        header p {
+            margin: 0.75rem auto 1.5rem auto;
+            max-width: 680px;
+            color: var(--muted);
+            font-size: 1.05rem;
+        }
+
+        .anchors {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.85rem;
+            margin-bottom: 2.25rem;
+        }
+
+        .anchor {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 1.1rem;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.32);
+            color: var(--text);
             text-decoration: none;
-            display: inline-block;
-            margin: 10px 5px;
-            transition: transform 0.2s;
+            transition: border 0.2s ease, transform 0.2s ease;
         }
-        .feature-button:hover {
-            transform: scale(1.05);
+
+        .anchor:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        section + section {
+            margin-top: clamp(2.25rem, 4vw, 3.5rem);
+            padding-top: clamp(1.75rem, 3vw, 2.5rem);
+            border-top: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        section h2 {
+            margin: 0 0 0.75rem 0;
+            font-size: clamp(1.65rem, 2.8vw, 2.05rem);
+        }
+
+        section p.lead {
+            margin-top: 0;
+            color: var(--muted);
+            max-width: 720px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: clamp(1rem, 2vw, 1.5rem);
+            margin-top: 1.5rem;
+        }
+
+        .card {
+            background: rgba(15, 23, 42, 0.72);
+            border-radius: 20px;
+            padding: 1.25rem;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            transition: transform 0.25s ease, border 0.25s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(56, 189, 248, 0.5);
+        }
+
+        .card h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--muted);
+            flex: 1;
+        }
+
+        .card a {
+            align-self: flex-start;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        form {
+            display: grid;
+            gap: 0.85rem;
+            margin-top: 1.25rem;
+        }
+
+        label {
+            font-weight: 600;
+            color: rgba(226, 232, 240, 0.85);
+        }
+
+        input[type="text"],
+        input[type="url"],
+        input[type="number"],
+        input[type="file"],
+        textarea {
+            background: rgba(15, 23, 42, 0.6);
+            color: var(--text);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 12px;
+            padding: 0.7rem 0.8rem;
+            font-size: 0.95rem;
+            width: 100%;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: "JetBrains Mono", "Fira Mono", ui-monospace, monospace;
+        }
+
+        button,
+        .pill-button {
+            border: none;
+            border-radius: 999px;
+            padding: 0.7rem 1.4rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            background: linear-gradient(120deg, var(--accent), var(--accent-strong));
+            color: #04111f;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        button:hover,
+        .pill-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 16px 35px rgba(14, 165, 233, 0.3);
+        }
+
+        .result,
+        pre.log {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 14px;
+            padding: 1rem 1.25rem;
+            font-family: "JetBrains Mono", "Fira Mono", ui-monospace, monospace;
+            font-size: 0.9rem;
+            color: rgba(209, 213, 219, 0.92);
+            overflow: auto;
+            max-height: 260px;
+        }
+
+        .tips {
+            display: grid;
+            gap: 0.8rem;
+            margin-top: 1.1rem;
+        }
+
+        .tips code {
+            background: rgba(56, 189, 248, 0.16);
+            border-radius: 0.55rem;
+            padding: 0.2rem 0.4rem;
+            color: #bae6fd;
+            font-family: "JetBrains Mono", "Fira Mono", ui-monospace, monospace;
+        }
+
+        footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem;
+            }
+
+            main {
+                padding: 1.4rem;
+                border-radius: 18px;
+            }
+
+            .anchors {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .anchor {
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🚀 Mari & Yang Webserver</h1>
-        <p>Welcome to our comprehensive HTTP/1.1 webserver implementation with advanced CGI support!</p>
+<main>
+    <header>
+        <h1>Mari &amp; Yang HTTP/1.1 Playground</h1>
+        <p>Everything on this page is wired to features implemented by the server: native CGI in five languages, cookie-backed sessions, redirects, autoindex, and fully working upload handling.</p>
+        <div class="anchors">
+            <a class="anchor" href="#cgi">CGI gallery</a>
+            <a class="anchor" href="#upload">File upload</a>
+            <a class="anchor" href="#methods">HTTP methods</a>
+            <a class="anchor" href="#extras">Handy endpoints</a>
+        </div>
+    </header>
 
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h3>🐍🐚🐪🐘💎 CGI Support</h3>
-                <p>Multi-language CGI support with Python, Shell, Perl, PHP, and Ruby scripts.</p>
-                <a href="/cgi/test.py" class="feature-button">Test CGI</a>
+    <section id="cgi">
+        <h2>CGI gallery</h2>
+        <p class="lead">All scripts live in <code>./data/www/example/cgi/</code>. Each button issues a real request through the server so you can inspect environment variables, cookies, and request data per language.</p>
+        <div class="grid">
+            <div class="card">
+                <h3>Python environment echo</h3>
+                <p>Shows request metadata and POST body handling. Add a query string to see it reflected immediately.</p>
+                <a href="/cgi/test.py">Open /cgi/test.py</a>
             </div>
-
-            <div class="feature-card">
-                <h3>🍪 Session Management</h3>
-                <p>Complete cookie and session handling with multiple implementation examples.</p>
-                <a href="/sessions.html" class="feature-button">Try Sessions</a>
+            <div class="card">
+                <h3>Shell script response</h3>
+                <p>Minimal Bash CGI that prints CGI variables. Works with GET and POST.</p>
+                <a href="/cgi/test.sh">Open /cgi/test.sh</a>
             </div>
-
-            <div class="feature-card">
-                <h3>📁 File Upload</h3>
-                <p>File upload capabilities with configurable storage locations.</p>
-                <a href="/upload" class="feature-button">Upload Files</a>
+            <div class="card">
+                <h3>Perl diagnostics</h3>
+                <p>Lists key environment variables set by the server and renders them as HTML.</p>
+                <a href="/cgi/test.pl">Open /cgi/test.pl</a>
             </div>
-
-            <div class="feature-card">
-                <h3>🔄 HTTP Methods</h3>
-                <p>Support for GET, POST, PUT, DELETE methods with proper routing.</p>
-                <a href="/cgi/test.py?name=Test&method=GET" class="feature-button">Test Methods</a>
+            <div class="card">
+                <h3>Ruby timestamp</h3>
+                <p>Demonstrates Ruby CGI support with dynamic timestamps and request metadata.</p>
+                <a href="/cgi/test.rb">Open /cgi/test.rb</a>
+            </div>
+            <div class="card">
+                <h3>PHP form echo</h3>
+                <p>Shows PHP CGI integration. Submit a POST form below to watch <code>$_POST</code> content change.</p>
+                <a href="/cgi/test.php">Open /cgi/test.php</a>
+            </div>
+            <div class="card">
+                <h3>Cookie playground</h3>
+                <p>Inspect how the server parses and sets cookies via Python helper scripts.</p>
+                <a href="/cgi/cookies.py">Open /cgi/cookies.py</a>
+            </div>
+            <div class="card">
+                <h3>Session backed counter</h3>
+                <p>Backed by <code>/cgi/session.py</code> and persistent files in <code>cgi/sessions/</code>; also see the richer UI at <code>/sessions.html</code>.</p>
+                <a href="/cgi/session.py">Open /cgi/session.py</a>
+            </div>
+            <div class="card">
+                <h3>Cookie login demo</h3>
+                <p>Simple Bash CGI that sets and clears a username cookie via query parameters.</p>
+                <a href="/cgi/login.sh">Open /cgi/login.sh</a>
             </div>
         </div>
+    </section>
 
-        <div style="text-align: center; margin: 30px 0;">
-            <h2>🎯 42 School Webserv Project</h2>
-            <p>This implementation exceeds all requirements with professional-grade features!</p>
+    <section id="upload">
+        <h2>File upload</h2>
+        <p class="lead">Uploads are served from the <code>/upload/</code> location (alias <code>./data/www/example/uploads/</code>). The form below talks directly to that endpoint using <code>multipart/form-data</code>.</p>
+        <form id="upload-form" action="/upload/" method="post" enctype="multipart/form-data">
+            <label for="upload-file">Choose a file to send (POST)</label>
+            <input id="upload-file" name="file" type="file" required>
+            <label for="upload-note">Optional note stored alongside the upload (sent as text field)</label>
+            <input id="upload-note" name="note" type="text" placeholder="Any short description">
+            <button type="submit">Upload now</button>
+        </form>
+        <div class="result" id="upload-result" aria-live="polite">Upload responses will appear here.</div>
+        <div class="tips">
+            <p><strong>Browse uploads:</strong> visit <code><a href="/upload/">/upload/</a></code> to see the autoindex and download stored files.</p>
+            <p><strong>Rename or replace:</strong> use the PUT helper below or run <code>curl -T myfile.txt http://localhost:32000/upload/custom-name.txt</code>.</p>
         </div>
-    </div>
+    </section>
+
+    <section id="methods">
+        <h2>HTTP method playground</h2>
+        <p class="lead">These forms and helpers talk to the server so you can verify routing, body parsing, and upload/overwrite behaviour for the mandated methods.</p>
+        <div class="grid">
+            <div class="card">
+                <h3>GET query tester</h3>
+                <p>Submit the form to append a query string and observe CGI variables.</p>
+                <form action="/cgi/test.py" method="get">
+                    <label for="get-name">Query parameter name</label>
+                    <input id="get-name" name="name" type="text" placeholder="e.g. visitor" required>
+                    <label for="get-value">Value</label>
+                    <input id="get-value" name="value" type="text" placeholder="Your value" required>
+                    <button type="submit">Send GET request</button>
+                </form>
+            </div>
+            <div class="card">
+                <h3>POST form data</h3>
+                <p>Posts form-encoded data to the PHP CGI so you can verify request body parsing.</p>
+                <form action="/cgi/test.php" method="post">
+                    <label for="post-message">Message</label>
+                    <input id="post-message" name="message" type="text" placeholder="Hello from the form" required>
+                    <label for="post-count">Number</label>
+                    <input id="post-count" name="count" type="number" value="1" min="0">
+                    <button type="submit">Send POST request</button>
+                </form>
+            </div>
+            <div class="card">
+                <h3>PUT helper</h3>
+                <p>Stores or replaces a file in <code>/upload/</code>. Adjust the filename or body as needed.</p>
+                <form id="put-form">
+                    <label for="put-target">Target path (relative to server root)</label>
+                    <input id="put-target" type="text" value="/upload/playground.txt" required>
+                    <label for="put-body">Text payload</label>
+                    <textarea id="put-body">Hello from PUT via this playground</textarea>
+                    <button type="submit">Send PUT to server</button>
+                </form>
+            </div>
+            <div class="card">
+                <h3>DELETE helper</h3>
+                <p>Remove a file from <code>/upload/</code>. Use it after PUT uploads to verify clean-up.</p>
+                <form id="delete-form">
+                    <label for="delete-target">File to delete</label>
+                    <input id="delete-target" type="text" value="/upload/playground.txt" required>
+                    <button type="submit">Send DELETE request</button>
+                </form>
+            </div>
+        </div>
+        <pre class="log" id="method-log">Method responses will appear here.</pre>
+    </section>
+
+    <section id="extras">
+        <h2>Handy endpoints</h2>
+        <p class="lead">Quick references to other behaviours implemented by the project.</p>
+        <div class="tips">
+            <p><strong>Session dashboard:</strong> <a href="/sessions.html">/sessions.html</a> uses <code>/cgi/session.py</code> for a full cookie-backed UI.</p>
+            <p><strong>Redirect demo:</strong> visit <a href="/redirect/">/redirect/</a> to be issued a 301 back to the homepage.</p>
+            <p><strong>Static tree:</strong> explore <a href="/subdir/">/subdir/</a> to test autoindex on static files.</p>
+            <p><strong>curl upload walkthrough:</strong> <code>curl -F file=@README.md -F note="via curl" http://localhost:32000/upload/</code></p>
+            <p><strong>curl JSON POST:</strong> <code>curl -H "Content-Type: application/json" -d '{"ping":true}' http://localhost:32000/cgi/test.py</code></p>
+        </div>
+    </section>
+
+    <footer>
+        Written by yanli & mari in C++98 — HTTP/1.1 only, keep-alive ready, no vhosts or TLS.
+    </footer>
+</main>
+
+<noscript>
+    <p style="max-width: 660px; margin: 1.5rem auto 0 auto; text-align: center; color: #f87171;">This playground enhances uploads and custom method tests with JavaScript. Without it the server still works, but you will need to rely on external tools or manual navigation.</p>
+</noscript>
+
+<script>
+(function () {
+    const uploadForm = document.getElementById("upload-form");
+    const uploadResult = document.getElementById("upload-result");
+    const methodLog = document.getElementById("method-log");
+
+    if (uploadForm) {
+        uploadForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+            uploadResult.textContent = "Uploading…";
+            const formData = new FormData(uploadForm);
+            try {
+                const response = await fetch(uploadForm.action, {
+                    method: "POST",
+                    body: formData
+                });
+                const text = await response.text();
+                uploadResult.textContent = "Status " + response.status + " " + response.statusText + "\n\n" + text;
+            } catch (error) {
+                uploadResult.textContent = "Upload failed: " + error;
+            }
+        });
+    }
+
+    function appendLog(message) {
+        const timestamp = new Date().toISOString();
+        const existing = methodLog.textContent.trim();
+        methodLog.textContent = (timestamp + " — " + message + "\n" + (existing ? "\n" + existing : "")).trim();
+    }
+
+    async function sendRequest(method, target, body) {
+        try {
+            const headers = {};
+            if (body && method !== "DELETE") {
+                headers["Content-Type"] = "text/plain; charset=utf-8";
+            }
+            const response = await fetch(target, {
+                method: method,
+                headers: headers,
+                body: method === "DELETE" ? null : body
+            });
+            const text = await response.text();
+            appendLog(method + " " + target + " => status " + response.status + " " + response.statusText + "\n" + text);
+        } catch (error) {
+            appendLog(method + " " + target + " => error: " + error);
+        }
+    }
+
+    const putForm = document.getElementById("put-form");
+    if (putForm) {
+        putForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+            const target = document.getElementById("put-target").value || "/upload/playground.txt";
+            const body = document.getElementById("put-body").value;
+            sendRequest("PUT", target, body);
+        });
+    }
+
+    const deleteForm = document.getElementById("delete-form");
+    if (deleteForm) {
+        deleteForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+            const target = document.getElementById("delete-target").value || "/upload/playground.txt";
+            sendRequest("DELETE", target, "");
+        });
+    }
+})();
+</script>
 </body>
 </html>

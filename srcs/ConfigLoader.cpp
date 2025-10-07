@@ -16,14 +16,15 @@
 ConfigLoader::ConfigLoader(void)
 : _path(), _servers(), _use_default_server(true), _server_count(0),
 _server_index(-1), _default_server(), _curr_server(), _curr_location(),
-_curr_endpoint(), _currline(0), _fatal_error(false), _root_is_folder(false)
+_curr_endpoint(), _currline(0), _fatal_error(false), _root_is_folder(false),
+_used_endpoints()
 {}
 
 ConfigLoader::ConfigLoader(std::string path)
 :_path(path), _servers(), _use_default_server(true),
 _server_count(0), _server_index(-1), _default_server(),
 _curr_server(), _curr_location(), _curr_endpoint(), _currline(0),
-_fatal_error(false), _root_is_folder(false)
+_fatal_error(false), _root_is_folder(false), _used_endpoints()
 {
 	parse(path);
 }
@@ -31,6 +32,7 @@ _fatal_error(false), _root_is_folder(false)
 void	ConfigLoader::parse(std::string path)
 {
 	_servers.clear();
+	_used_endpoints.clear();
 	enum context_enum
 	{
 		GLOBAL,
@@ -53,7 +55,7 @@ void	ConfigLoader::parse(std::string path)
 	if (!file)
 	{
 		err_code = errno;
-		throw SysError("Unable to open/read config file, using default server config", errno);
+		throw SysError("Unable to open/read config file, using default server config", err_code);
 		goto fatal_exit ;
 	}
 	while(std::getline(file, line))
@@ -122,12 +124,64 @@ void	ConfigLoader::parse(std::string path)
 			else if (keyword == "listen")
 			{
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
+{
+					std::cerr<<path<<":"<<_currline<<": Invalid 'listen' directive"<<std::endl;
 					goto fatal_exit;
+				}
 				temp_word.erase(temp_word.size() - 1);
+				std::string	endpoint_value = temp_word;
+				std::string	host;
+				std::string	port_str;
+				size_t	colon = endpoint_value.find(':');
+				if (colon == std::string::npos)
+				{
+					host = "0.0.0.0";
+					port_str = endpoint_value;
+				}
+				else
+				{
+					host = endpoint_value.substr(0, colon);
+					port_str = endpoint_value.substr(colon + 1);
+				}
+				if (host.empty() || host == "*")
+					host = "0.0.0.0";
+				if (port_str.empty())
+				{
+					std::cerr<<path<<":"<<_currline<<": Missing port in 'listen' directive"<<std::endl;
+					goto fatal_exit;
+				}
+				char	*endptr = NULL;
+				long	port_long = std::strtol(port_str.c_str(), &endptr, 10);
+				if (*endptr != '\0')
+				{
+					std::cerr<<path<<":"<<_currline<<": Invalid port in 'listen' directive"<<std::endl;
+					goto fatal_exit;
+				}
+				if (port_long < 0 || port_long > 65535)
+				{
+					std::cerr<<path<<":"<<_currline<<": Port out of range in 'listen' directive"<<std::endl;
+					goto fatal_exit;
+				}
+				std::pair<std::string, int>	normalized(host, static_cast<int>(port_long));
+				if (_used_endpoints.find(normalized) != _used_endpoints.end())
+				{
+				std::cerr<<path<<":"<<_currline
+				<<": Duplicate listen directive for '"<<host<<":"<<port_long<<"'"<<std::endl;
+				goto fatal_exit;
+				}
 #ifdef	_DEBUG
 				std::cout<<"parser: listening on: "<<temp_word<<std::endl;
 #endif
-				_curr_server.addEndpoint(temp_word);
+				_used_endpoints.insert(normalized);
+				try
+				{
+					_curr_server.addEndpoint(endpoint_value);
+				}
+				catch (const std::exception &e)
+				{
+					std::cerr<<path<<":"<<_currline<<": "<<e.what()<<std::endl;
+					goto fatal_exit;
+				}
 			}
 			else if (keyword == "client_max_body_size")
 			{
@@ -409,7 +463,7 @@ _server_count(other._server_count), _server_index(other._server_index),
 _default_server(other._default_server), _curr_server(other._curr_server),
 _curr_location(other._curr_location), _curr_endpoint(other._curr_endpoint),
 _currline(other._currline), _fatal_error(other._fatal_error),
-_root_is_folder(other._root_is_folder)
+_root_is_folder(other._root_is_folder), _used_endpoints()
 {}
 
 ConfigLoader	&ConfigLoader::operator=(const ConfigLoader &other)
@@ -428,54 +482,11 @@ ConfigLoader	&ConfigLoader::operator=(const ConfigLoader &other)
 		_currline = other._currline;
 		_fatal_error = other._fatal_error;
 		_root_is_folder = other._root_is_folder;
+		_used_endpoints = other._used_endpoints;
 	}
 	return (*this);
 }
 ConfigLoader::~ConfigLoader(void) {}
-/*
-int	ConfigLoader::setDefaultServer(void)
-{
-	int	ret = 0;
-	try
-	{
-		ServerConfig	server;
-		LocationConfig	root_location;
-
-		server.setServerName("default_webserv");
-		server.addEndpoint("0.0.0.0:30000");
-		server.setBodySize(1, 'M');
-
-		root_location.setPathPrefix("/");
-		root_location.setMethod(GET_MASK);
-		root_location.setAlias("./data/www/example/html");
-		root_location.addIndexFile("index.html");
-		root_location.setAutoindex(false);
-		server.addLocation(root_location);
-
-		_servers.clear();
-		_default_server = server;
-		_servers[0] = server;
-		_server_count = 1;
-		_server_index = 0;
-		_use_default_server = true;
-		_fatal_error = false;
-		std::cout<<"Setting up default server"<<std::endl;
-		return (ret);
-	}
-	catch (const std::exception &e)
-	{
-		_fatal_error = true;
-		std::cerr<<"Unable to set up default server: "<<e.what()<<std::endl;
-		ret = 1;
-	}
-	catch (...)
-	{
-		_fatal_error = true;
-		std::cerr<<"Non-standard exception caught"<<std::endl;
-		ret = 2;
-	}
-	return (ret);
-}*/
 
 const ServerConfig	&ConfigLoader::operator[](std::string name) const
 {

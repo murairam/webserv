@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/21 20:08:04 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/01 18:28:35 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/04 15:57:49 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@
 # include "EventLoop.hpp"
 # include "Response.hpp"
 # include "timestring.hpp"
-# include "CGIHandler.hpp"
+# include "CgiHandler.hpp"
 
 class	EventLoop;
 
@@ -45,6 +45,15 @@ class	Connection: public IFdHandler
 		std::vector<const ServerConfig*>	_available_servers;
 		int			_method;
 		CgiHandler	*_cgi;
+		bool		_request_metadata_ready;
+		bool		_request_chunked;
+		long		_request_content_length;
+		size_t		_request_body_limit;
+		bool		_has_request_body_limit;
+		size_t		_request_header_end;
+		size_t		_chunk_total_bytes;
+		size_t		_chunk_scan_offset;
+		bool		_pending_cgi;
 
 		// NEW PARSER INTEGRATION
 		void	dispatcher(void);    // Make sure this is declared
@@ -61,8 +70,9 @@ class	Connection: public IFdHandler
 		bool	serveFile(const std::string &file_path, int &err_code);
 		void	sendErrorResponse(int code);
 		bool	selectServerForRequest(const HttpRequest &request);
-		void	sendSimpleResponse(int code, const std::string &content_type, const std::string &body);
+		void	sendSimpleResponse(int code, std::string content_type = std::string(), std::string body = std::string());
 		void	sendRedirectResponse(int code, const std::string &location);
+		std::string	resolveRedirectLocation(const std::string &target, const HttpRequest &request) const;
 		void	sendDirectoryListing(const std::string &dir_path, const std::string &uri);
 		void	handleCgiRequest(const HttpRequest &request, const LocationConfig *loc, const std::string &cgi_program);
 		void	checkCgi(void);
@@ -71,6 +81,11 @@ class	Connection: public IFdHandler
 		std::string	getContentType(const std::string &file_path) const;
 		std::string	getFileExtension(const std::string &path) const;
 		std::string	intToString(int value) const;
+		bool		enforceRequestBodyLimit(void);
+		bool		parseRequestMetadata(void);
+		void		resetRequestState(void);
+		const ServerConfig	*selectDefaultServer(void) const;
+		bool		checkChunkedBodyLimit(void);
 
 		Connection(void);
 		Connection(const Connection &other);
@@ -79,7 +94,7 @@ class	Connection: public IFdHandler
 	public:
 		virtual	~Connection(void);
 		Connection(int fd, const std::string &server_name, const ServerConfig *server, const std::vector<const ServerConfig*> &servers);
-		/*	This one ensures all write/read/recv/send would be
+		/*	This one ensures all write/read/recv/send would be 
 			precedented by a poll;
 		*/
 		Connection(int fd, std::string action, std::string path, int &err_code, std::string filename = std::string());
@@ -105,8 +120,9 @@ class	Connection: public IFdHandler
 		virtual void	onHangup(int fd);
 		virtual void	onTick(int fd);
 
-		static bool	handleMultipart(const HttpRequest &request, std::string &filename, std::string &content);
+		static bool	handleMultipart(const HttpRequest &request, std::string &filename, std::size_t &content_offset, std::size_t &content_length);
 		static bool	uploadFile(const HttpRequest &request, const LocationConfig *loc, std::string &response_body, int &status_code, const std::string &method);
+		void	markCgiReady(void);
 };
 
 #endif

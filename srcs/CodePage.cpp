@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/18 17:49:25 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/01 13:49:19 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/03 22:44:43 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -120,7 +120,9 @@ const std::map<int,std::string>	&CodePage::codes(void)
 		m[411] = "Length Required";
 		m[412] = "Precondition Failed";
 		m[413] = "Payload Too Large";
+		m[421] = "Misdirected Request";
 		m[431] = "Request Header Fields Too Large";
+		m[500] = "Internal Server Error";
 		m[501] = "Not Implemented";
 		m[505] = "HTTP Version Not Supported";
 	}

@@ -6,7 +6,7 @@
 /*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:57:27 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/01 13:50:19 by yanli            ###   ########.fr       */
+/*   Updated: 2025/10/03 22:16:47 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,24 +27,18 @@ namespace
 		(void)sig;
 	}
 
-void	drain_pipe(int fd)
+	void	drain_pipe(int fd)
 	{
 		char	buf[5000];
 		while (1)
 		{
 			ssize_t	n = ::read(fd, buf, sizeof(buf));
 			if (n > 0)
+			{
+				if (static_cast<size_t>(n) < sizeof(buf))
+					break;
 				continue;
-			if (!n)
-				break;
-			if (errno == EINTR)
-				continue;
-			if (errno == EAGAIN
-#if defined(EWOULDBLOCK) && EAGAIN != EWOULDBLOCK
-					|| errno == EWOULDBLOCK
-#endif
-			)
-				break;
+			}
 			break;
 		}
 	}
@@ -66,8 +60,8 @@ _wakeup_wr_fd(-1), _should_stop(false), _timeout(0)
 	{
 		_wakeup_rd_fd = pipefd[0];
 		_wakeup_wr_fd = pipefd[1];
-		if (!set_nonblock_fd(_wakeup_rd_fd, std::string("EventLoop:54"))
-			|| !set_nonblock_fd(_wakeup_wr_fd, std::string("EventLoop:55")))
+		if (!set_nonblock_fd(_wakeup_rd_fd, std::string("EventLoop:63"))
+			|| !set_nonblock_fd(_wakeup_wr_fd, std::string("EventLoop:64")))
 		{
 			(void)::close(_wakeup_rd_fd);
 			(void)::close(_wakeup_wr_fd);
@@ -90,8 +84,8 @@ _wakeup_wr_fd(-1), _should_stop(false), _timeout(other._timeout)
 	{
 		_wakeup_rd_fd = pipefd[0];
 		_wakeup_wr_fd = pipefd[1];
-		if (!set_nonblock_fd(_wakeup_rd_fd, std::string("EventLoop:78"))
-			|| !set_nonblock_fd(_wakeup_wr_fd, std::string("EventLoop:79")))
+		if (!set_nonblock_fd(_wakeup_rd_fd, std::string("EventLoop:87"))
+			|| !set_nonblock_fd(_wakeup_wr_fd, std::string("EventLoop:88")))
 		{
 			if (_wakeup_rd_fd > -1)
 				(void)::close(_wakeup_rd_fd);
@@ -128,8 +122,8 @@ EventLoop	&EventLoop::operator=(const EventLoop &other)
 		{
 			_wakeup_rd_fd = pipefd[0];
 			_wakeup_wr_fd = pipefd[1];
-			if (!set_nonblock_fd(_wakeup_rd_fd)
-				|| !set_nonblock_fd(_wakeup_wr_fd))
+			if (!set_nonblock_fd(_wakeup_rd_fd, "EventLoop.cpp:125")
+				|| !set_nonblock_fd(_wakeup_wr_fd, "EventLoop.cpp:125"))
 			{
 				if (_wakeup_rd_fd > -1)
 					(void)::close(_wakeup_rd_fd);
@@ -192,7 +186,7 @@ void	EventLoop::set_events(int fd, int events)
 	it->second._last_active = getTime();
 }
 
-void	EventLoop::set_timeout(unsigned timeout)
+void	EventLoop::set_timeout(int timeout)
 {
 	this->_timeout = timeout;
 }

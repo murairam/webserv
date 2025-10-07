@@ -35,6 +35,7 @@ class	ConfigLoader
 		int							_currline;
 		bool						_fatal_error;
 		bool						_root_is_folder;
+		std::set<std::pair<std::string,int> >	_used_endpoints;
 
 		void	parse(std::string path);
 

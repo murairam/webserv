@@ -58,7 +58,7 @@ const std::vector<LocationConfig>	&ServerConfig::getLocations(void) const
 
 /*	Longest prefix matach
 */
-const LocationConfig *ServerConfig::matchLocation(const std::string &path) const
+const LocationConfig	*ServerConfig::matchLocation(const std::string &path) const
 {
 	if (path.empty())
 		return (0);
@@ -103,17 +103,15 @@ long	ServerConfig::getBodyLimit(const LocationConfig *loc) const
 	return (loc->getClientBodyLimit());
 }
 
-/*	Error page for 404 is guaranteed to be existent;
-	that emptystr is there to avoid compiler warning
+/*	It is guaranteed that basic version of error pages
+	is existent through CodePage; here it searches if
+	any custom error page is set;	
 */
 std::string	ServerConfig::getErrorPage(int code) const
 {
 	std::map<int,std::string>::const_iterator	it = _error_pages.find(code);
 	if (it != _error_pages.end())
 		return (it->second);
-	std::map<int,std::string>::const_iterator	it2 = _error_pages.find(404);
-	if (it2 != _error_pages.end())
-		return (it2->second);
 	return (std::string());
 }
 
@@ -125,7 +123,7 @@ void	ServerConfig::setServerName(std::string name)
 void	ServerConfig::addEndpoint(std::string data)
 {
 	std::string	host;
-	std::string::size_type	pos = data.find(':');
+	size_t		pos = data.find(':');
 	if (pos == std::string::npos)
 		host = ("0.0.0.0");
 	else
@@ -136,8 +134,8 @@ void	ServerConfig::addEndpoint(std::string data)
 #ifdef	_DEBUG
 	std::cout<<"ServerConfig::addEndpoint debug info: "<<host<<":"<<port<<std::endl;
 #endif
-	if (port < 1 || port > 65536)
-		throw std::runtime_error("Invalid endpoint has been ignored: " + data);
+	if (port < 0 || port > 65535)
+		throw std::runtime_error("Invalid endpoint(port) has been ignored: " + data);
 	_listeners.push_back(Endpoint(host, port));
 }
 

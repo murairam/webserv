@@ -15,9 +15,32 @@
 volatile sig_atomic_t	SignalHandler::_shutdown_flag = 0;
 int						SignalHandler::_pipefd[2] = {-1, -1};
 
+#ifdef	_USE_SIGACTION
+
+void	SignalHandler::_siginfo_handler(int sig, siginfo_t *info, void *context)
+{
+	(void)sig;
+	(void)info;
+	(void)context;
+	SignalHandler::_shutdown_flag = 1;
+	if (_pipefd[1] > -1)
+	{
+		ssize_t	ignored = ::write(_pipefd[1], "1", 1);
+		(void)ignored;
+	}
+}
+void	SignalHandler::_siginfo_ignored_handler(int sig, siginfo_t *info, void *context)
+{
+	(void)sig;
+	(void)info;
+	(void)context;
+}
+
+#else
+
 void	SignalHandler::_handler(int sig)
 {
-	_shutdown_flag = 1;
+	SignalHandler::_shutdown_flag = 1;
 	if (_pipefd[1] > -1)
 	{
 		ssize_t	ignored = ::write(_pipefd[1], "1", 1);
@@ -26,19 +49,46 @@ void	SignalHandler::_handler(int sig)
 	(void)sig;
 }
 
+void	SignalHandler::_ignored_handler(int sig)
+{
+	(void)sig;
+}
+
+#endif
+
 bool	SignalHandler::_hook_all(void)
 {
 	size_t	i = 0;
 	while (i < _signals.size())
 	{
-#ifdef	USE_SIGACTION
+#ifdef	_USE_SIGACTION
 		struct sigaction	sa;
+
+		std::memset(&sa, 0, sizeof(sa));
 		sa.sa_flags = SA_SIGINFO | SA_RESTART;
-		sa.sa_handler = &SignalHandler::_handler;
+		sa.sa_handler = &SignalHandler::_siginfo_handler;
 		if (::sigemptyset(&sa.sa_mask) || ::sigaction(_signals[i], &sa, 0))
 			return (false);
 #else
 		if (::signal(_signals[i], &SignalHandler::_handler) == SIG_ERR)
+			return (false);
+#endif
+		i++;
+	}
+
+	i = 0;
+	while (i < _ignored_signals.size())
+	{
+#ifdef	_USE_SIGACTION
+		struct sigaction	sb;
+
+		std::memset(&sb, 0, sizeof(sa));
+		sb.sa_flags = SA_SIGINFO | SA_RESTART;
+		sb.sa_handler = &SignalHandler::_siginfo_ignored_handler;
+		if (::sigemptyset(&sb.sa_mask) || ::sigaction(_ignored_signals[i], &sa, 0))
+			return (false);
+#else
+		if (::signal(_ignored_signals[i], &SignalHandler::_ignored_handler) == SIG_ERR)
 			return (false);
 #endif
 		i++;
@@ -51,14 +101,33 @@ void	SignalHandler::_unhook_all(void)
 	size_t	i = 0;
 	while (i < _signals.size())
 	{
-#ifdef	USE_SIGACTION
+#ifdef	_USE_SIGACTION
 		struct sigaction	sa;
+
+		std::memset(&sa, 0, sizeof(sa));
 		sa.sa_flags = 0;
 		sa.sa_handler = SIG_DFL;
 		(void)::sigemptyset(&sa.sa_mask);
 		(void)::sigaction(_signals[i], &sa, 0);
 #else
 		(void)::signal(_signals[i], SIG_DFL);
+#endif
+		i++;
+	}
+
+	i = 0;
+	while (i < _ignored_signals.size())
+	{
+#ifdef	_USE_SIGACTION
+		struct sigaction	sb;
+
+		std::memset(&sa, 0, sizeof(sb));
+		sb.sa_flags = 0;
+		sb.sa_handler = SIG_DFL;
+		(void)::sigemptyset(&sb.sa_mask);
+		(void)::sigaction(_ignored_signals[i], &sa, 0);
+#else
+		(void)::signal(_ignored_signals[i], SIG_DFL);
 #endif
 		i++;
 	}
@@ -70,8 +139,8 @@ bool	SignalHandler::_install_handlers(void)
 		return (false);
 	if (::pipe(_pipefd))
 		return (false);
-	if (!set_nonblock_fd(_pipefd[0], std::string("SignalHandler.cpp:73"))
-		|| !set_nonblock_fd(_pipefd[1], std::string("SignalHandler.cpp:74"))
+	if (!set_nonblock_fd(_pipefd[0], std::string("SignalHandler.cpp:142"))
+		|| !set_nonblock_fd(_pipefd[1], std::string("SignalHandler.cpp:143"))
 		|| !_hook_all())
 	{
 		(void)::close(_pipefd[0]);
@@ -84,7 +153,7 @@ bool	SignalHandler::_install_handlers(void)
 }
 
 SignalHandler::SignalHandler(void)
-:_signals(), _installed(false) {}
+:_signals(), _ignored_signals(), _installed(false) {}
 
 SignalHandler::~SignalHandler(void)
 {
@@ -92,7 +161,7 @@ SignalHandler::~SignalHandler(void)
 }
 
 SignalHandler::SignalHandler(const SignalHandler &other)
-:_signals(other._signals), _installed(false) {}
+:_signals(other._signals), _ignored_signals(other._ignored_signals), _installed(false) {}
 
 SignalHandler	&SignalHandler::operator=(const SignalHandler &other)
 {
@@ -101,6 +170,7 @@ SignalHandler	&SignalHandler::operator=(const SignalHandler &other)
 		if (_installed)
 			uninstall();
 		_signals = other._signals;
+		_ignored_signals = other._ignored_signals;
 		_installed = false;
 	}
 	return (*this);
@@ -111,6 +181,13 @@ void	SignalHandler::addSignal(int sig)
 	if (_installed)
 		return ;
 	_signals.push_back(sig);
+}
+
+void	SignalHandler::ignoreSignal(int sig)
+{
+	if (_installed)
+		return ;
+	_ignored_signals.push_back(sig);
 }
 
 bool	SignalHandler::install(void)
@@ -158,11 +235,11 @@ bool	SignalHandler::checkStatus(void)
 		{
 			ssize_t	n = ::read(_pipefd[0], buf, sizeof(buf));
 			if (n > 0)
+			{
+				if (static_cast<size_t>(n) < sizeof(buf))
+					break;
 				continue;
-			if (!n)
-				break;
-			if (errno == EINTR)
-				continue;
+			}
 			break;
 		}
 	}

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Response.cpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/17 01:24:56 by yanli             #+#    #+#             */
-/*   Updated: 2025/09/22 16:16:29 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/02 11:20:25 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,8 +106,10 @@ std::string	Response::serialize(void) const
 	std::string	reason = _code_page().getReason(_status_code);
 
 	response = "HTTP/1.1 " + intToString(_status_code) + " " + reason + "\r\n";
-	std::map<std::string, std::string>::const_iterator	it = _headers.begin();
-	while (it != _headers.end())
+	std::map<std::string, std::string>		headers = _headers;
+	headers["Date"] = getTimeString();
+	std::map<std::string, std::string>::const_iterator	it = headers.begin();
+	while (it != headers.end())
 	{
 		response += it->first + ": " + it->second + "\r\n";
 		++it;
@@ -184,8 +186,15 @@ std::string	Response::generateDirectoryListingHTML(const std::string &path, cons
 	Directory		dir(path);
 	std::string		entry;
 
-	html = "<!DOCTYPE html>\n<html><head><title>Index of " + escapeHTML(uri) + "</title></head>\n";
-	html += "<body><h1>Index of " + escapeHTML(uri) + "</h1><hr><pre>\n";
+	html = "<!DOCTYPE html>\n<html><head><title>Index of " + escapeHTML(uri) + "</title></head>\n<body><h1>Index of " + escapeHTML(uri) + "</h1><hr><pre>\n";
+
+	std::string	base_uri = uri;
+	if (base_uri.empty())
+		base_uri = "/";
+	if (base_uri[0] != '/')
+		base_uri.insert(base_uri.begin(), '/');
+	if (base_uri[base_uri.size() - 1] != '/')
+		base_uri += '/';
 
 	if (uri != "/" && !uri.empty())
 	{
@@ -200,17 +209,22 @@ std::string	Response::generateDirectoryListingHTML(const std::string &path, cons
 		else
 			parent = parent.substr(0, pos) + "/";
 
-		html += "<a href=\"" + parent + "\">../</a>\n";
+		html += "<a href=\"" + escapeHTML(parent) + "\">../</a>\n";
 	}
 
 	dir.ft_opendir();
 	while (!(entry = dir.nextEntry()).empty())
 	{
 		std::string	full_path = path + "/" + entry;
+		std::string	href = base_uri;
+		href += entry;
 		if (isDirectory(full_path))
-			html += "<a href=\"" + entry + "/\">" + entry + "/</a>\n";
+		{
+			href += '/';
+			html += "<a href=\"" + escapeHTML(href) + "\">" + escapeHTML(entry) + "/</a>\n";
+		}
 		else
-			html += "<a href=\"" + entry + "\">" + entry + "</a>\n";
+			html += "<a href=\"" + escapeHTML(href) + "\">" + escapeHTML(entry) + "</a>\n";
 	}
 	html += "</pre><hr></body></html>";
 	dir.ft_closedir();
@@ -240,18 +254,88 @@ std::string	Response::getMimeType(const std::string &extension) const
 		return ("text/html");
 	else if (extension == ".css")
 		return ("text/css");
+	else if (extension == ".csv")
+		return ("text/csv");
 	else if (extension == ".js")
 		return ("application/javascript");
+	else if (extension == ".json")
+		return ("application/json");
+	else if (extension == ".xml")
+		return ("application/xml");
+	else if (extension == ".rar")
+		return ("application/vnd.rar");
+	else if (extension == ".zip")
+		return ("application/zip");
+	else if (extension == ".gz")
+		return ("application/gzip");
+	else if (extension == ".svg")
+		return ("image/svg+xml");
+	else if (extension == ".ico")
+		return ("image/vnd.microsfot.icon");
+	else if (extension == ".tar")
+		return ("application/x-tar");
+	else if (extension == ".webmanifest")
+		return ("application/manifest+json");
+	else if (extension == ".xhtml")
+		return ("application/xhtml+xml");
+	else if (extension == ".xls")
+		return ("application/vnd.ms-excel");
+	else if (extension == ".7z")
+		return ("application/x-7z-compressed");
+	else if (extension == ".xlsx")
+		return ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	else if (extension == ".pdf")
+		return ("application/pdf");
+	else if (extension == ".tiff" || extension == ".tif")
+		return ("image/tiff");
+	else if (extension == ".wav")
+		return ("audio/wav");
 	else if (extension == ".png")
 		return ("image/png");
 	else if (extension == ".jpg" || extension == ".jpeg")
 		return ("image/jpeg");
+	else if (extension == ".sh")
+		return ("application/x-sh");
+	else if (extension == ".ppt")
+		return ("application/vnd.ms-powerpoint");
+	else if (extension == ".pptx")
+		return ("application/vnd.openxmlformats-officedocument.presentationml.presentation");
 	else if (extension == ".gif")
 		return ("image/gif");
 	else if (extension == ".txt")
 		return ("text/plain");
 	else if (extension == ".ico")
 		return ("image/x-icon");
+	else if (extension == ".avi")
+		return ("video/x-msvideo");
+	else if (extension == ".ttf")
+		return ("font/ttf");
+	else if (extension == ".3gp")
+		return ("video/3gpp");
+	else if (extension == ".oga")
+		return ("audio/ogg");
+	else if (extension == ".ogx")
+		return ("application/ogg");
+	else if (extension == ".ogv")
+		return ("video/ogg");
+	else if (extension == ".opus")
+		return ("audio/ogg; codecs=\"opus\"");
+	else if (extension == ".mp4")
+		return ("video/mp4");
+	else if (extension == ".mpeg")
+		return ("video/mpeg");
+	else if (extension == ".rtf")
+		return ("application/rtf");
+	else if (extension == ".mp3")
+		return ("audio/mpeg");
+	else if (extension == ".ts")
+		return ("video/mp2t");
+	else if (extension == ".mpkg")
+		return ("application/vnd.apple.installer+xml");
+	else if (extension == ".odp")
+		return ("application/vnd.oasis.opendocument.presentation");
+	else if (extension == ".otf")
+		return ("font/otf");
 	else
 		return ("application/octet-stream");
 }

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequestParser.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 11:35:23 by mmiilpal          #+#    #+#             */
-/*   Updated: 2025/10/02 13:26:34 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/04 12:15:17 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,28 +23,31 @@ HttpRequestParser::~HttpRequestParser(void) {}
 
 HttpRequest HttpRequestParser::parse(std::istream &input)
 {
-    HttpRequest request;
+	HttpRequest request;
 
-    // Parse request line (GET /path HTTP/1.1)
-    if (!parseRequestLine(input, request))
-        return (request);  // Error already set
+	// Parse request line (GET /path HTTP/1.1)
+	if (!parseRequestLine(input, request))
+		return (request);  // Error already set
 
     // Parse headers (Host: example.com, etc.)
-    if (!parseHeaders(input, request))
-        return (request);  // Error already set
+	if (!parseHeaders(input, request))
+		return (request);  // Error already set
+	
+		// Check if an error was set during header parsing (e.g., Content-Length too large)
+	if (request.getErrorCode())
+		return (request);  // Error already set during header parsing
+	// Parse body (for POST and PUT requests)
+	if (!parseBody(input, request))
+		return (request);  // Error already set
 
-    // Parse body (for POST and PUT requests)
-    if (!parseBody(input, request))
-        return (request);  // Error already set
+	// Validation: Host header is required in HTTP/1.1
+	if (!request.hasHeader("host"))
+	{
+		setError(request, 400);
+		return (request);
+	}
 
-    // Validation: Host header is required in HTTP/1.1
-    if (!request.hasHeader("host"))
-    {
-        setError(request, 400);
-        return (request);
-    }
-
-    return (request);
+	return (request);
 }
 
 HttpRequest HttpRequestParser::parse(const std::string &input)
@@ -187,18 +190,19 @@ bool HttpRequestParser::parseBody(std::istream &input, HttpRequest &request)
 
     // Parse fixed-length body
     if (request.getContentLength() >= 0)
-    {
-        // Sanity check: prevent parsing extremely large bodies that could cause infinite loops
-        // The actual body size limits will be enforced by the server configuration later
-        const long MAX_PARSE_SIZE = 50 * 1024 * 1024;  // 50MB absolute maximum for parsing
-        if (request.getContentLength() > MAX_PARSE_SIZE)
-        {
-            setError(request, 413);  // Payload Too Large
-            return (false);
-        }
+	{/*
+		// Sanity check: prevent parsing extremely large bodies that could cause infinite loops
+		// The actual body size limits will be enforced by the server configuration later
+		const long	max = 50L * 1024L * 1024L;
+		if (request.getContentLength() > max)
+		{
+			setError(request, 413);
+			return (false);
+		}*/
+	/*	Let me try if we can do it without the hard limit.
+	*/
         return (parseFixedLengthBody(input, request));
-    }
-
+	}
     // No body
     request.setBody("");
     return (true);
@@ -272,6 +276,7 @@ bool HttpRequestParser::parseChunkedBody(std::istream &input, HttpRequest &reque
     }
 
     request.setBody(body);
+	request.setContentLength(static_cast<long>(body.size()));
     return (true);
 }
 
@@ -375,6 +380,9 @@ void HttpRequestParser::parseContentLengthHeader(const std::string &value, HttpR
         return;
 
     long length = std::strtol(length_str.c_str(), NULL, 10);
+	/*	We cannot set a hard limit because it is supposed to 
+		be able to work with large file uploader;
+	*/
     request.setContentLength(length);
 }
 
@@ -536,29 +544,130 @@ bool	HttpRequestParser::sanitizePath
 	return (true);
 }
 
+// Request completeness helpers
+
+bool HttpRequestParser::hasCompleteChunkedBody(const std::string &body)
+{
+	size_t	pos = 0;
+
+	while (true)
+	{
+		size_t	line_end = body.find("\r\n", pos);
+		if (line_end == std::string::npos)
+			return (false);
+
+		std::string	size_line = body.substr(pos, line_end - pos);
+		std::string::size_type	semicolon = size_line.find(';');
+		if (semicolon != std::string::npos)
+			size_line = size_line.substr(0, semicolon);
+
+		std::string	size_str = trim(size_line);
+		if (size_str.empty())
+			return (true);
+
+		long	chunk_size = std::strtol(size_str.c_str(), NULL, 16);
+		if (chunk_size < 0)
+			return (true);
+
+		pos = line_end + 2;
+
+		if (chunk_size > static_cast<long>(body.size() - pos))
+			return (false);
+
+		pos += static_cast<size_t>(chunk_size);
+
+		if (pos + 1 >= body.size())
+			return (false);
+
+		if (body[pos] != '\r' || body[pos + 1] != '\n')
+			return (true);
+
+		pos += 2;
+
+		if (chunk_size == 0)
+		{
+			if (pos >= body.size())
+				return (true);
+			while (true)
+			{
+				size_t	trailer_end = body.find("\r\n", pos);
+				if (trailer_end == std::string::npos)
+					return (false);
+				if (trailer_end == pos)
+					return (true);
+				pos = trailer_end + 2;
+			}
+		}
+	}
+
+	return (false);
+}
+
+bool HttpRequestParser::hasCompleteFixedLengthBody(const std::string &body, long length)
+{
+	if (length <= 0)
+		return (true);
+	return (static_cast<long>(body.size()) >= length);
+}
+
 // Public utility methods
 
 bool HttpRequestParser::isCompleteRequest(const std::string &input)
 {
-    // Must contain \r\n\r\n (end of headers)
-    std::string::size_type headers_end = input.find("\r\n\r\n");
-    if (headers_end == std::string::npos)
-        return false;
+	std::string::size_type	header_end = input.find("\r\n\r\n");
+	if (header_end == std::string::npos)
+		return (false);
 
-    // Check if this is a chunked request
-    std::string headers_only = input.substr(0, headers_end + 4);
-    std::string lower_headers = toLower(headers_only);
+	std::string	headers = input.substr(0, header_end);
+	std::istringstream	stream(headers);
+	std::string	line;
 
-    if (lower_headers.find("transfer-encoding: chunked") != std::string::npos)
-    {
-        // For chunked requests, check if the chunks are complete
-        // Must end with "0\r\n\r\n" or "0\n\n" sequence
-        return (input.find("0\r\n\r\n") != std::string::npos ||
-                input.find("0\n\n") != std::string::npos);
-    }
+	if (!std::getline(stream, line))
+		return (false);
+	if (!line.empty() && line[line.size() - 1] == '\r')
+		line.erase(line.size() - 1);
 
-    // For non-chunked requests, headers are sufficient
-    return true;
+	bool	chunked = false;
+	long	content_length = -1;
+
+	while (std::getline(stream, line))
+	{
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+		if (line.empty())
+			continue;
+
+		std::string::size_type	colon_pos = line.find(':');
+		if (colon_pos == std::string::npos)
+			continue;
+
+		std::string	name = toLower(trim(line.substr(0, colon_pos)));
+		std::string	value = trim(line.substr(colon_pos + 1));
+
+		if (name == "transfer-encoding")
+		{
+			std::string	lower_value = toLower(value);
+			if (lower_value.find("chunked") != std::string::npos)
+			{
+				chunked = true;
+				content_length = -1;
+			}
+		}
+		else if (name == "content-length" && !chunked)
+		{
+			long	parsed = std::strtol(value.c_str(), NULL, 10);
+			if (parsed >= 0)
+				content_length = parsed;
+		}
+	}
+
+	std::string	body = input.substr(header_end + 4);
+
+	if (chunked)
+		return (hasCompleteChunkedBody(body));
+	if (content_length >= 0)
+		return (hasCompleteFixedLengthBody(body, content_length));
+	return (true);
 }
 
 bool HttpRequestParser::hasValidRequestLine(const std::string &input)

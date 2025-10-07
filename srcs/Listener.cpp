@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Listener.cpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mmiilpal <mmiilpal@student.42.fr>          +#+  +:+       +#+        */
+/*   By: yanli <yanli@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/19 00:11:14 by yanli             #+#    #+#             */
-/*   Updated: 2025/10/02 12:33:07 by mmiilpal         ###   ########.fr       */
+/*   Updated: 2025/10/02 16:49:43 by yanli            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@ namespace
 		size_t			i = 0;
 		int				part = 0;
 		int				letter = 0;
-
+		
 		if (host.empty() || host == "0.0.0.0")
 		{
 			ret->s_addr = htonl(INADDR_ANY);
@@ -96,7 +96,7 @@ _fd(-1), _engaged(false), _loop(0), _conn_mgr(0), _server_cfg(0), _server_config
 bool	Listener::listen(int backlog)
 {
 	struct in_addr		ip;
-	int					s;
+	int					s = -1;
 	int					set = 1;
 	struct sockaddr_in	addr;
 	bool				ret = true;
@@ -106,13 +106,13 @@ bool	Listener::listen(int backlog)
 		s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (s < 0)
 			throw SysError ("\n---socket failed (Listener.cpp:129)", errno);
-		if (::setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
-			throw SysError ("\n---setsockopt failed (Listener.cpp:132)", errno);
-		if (!set_nonblock_fd(s, std::string("Listener.cpp:110")))
+		if (!set_nonblock_fd(s))
 		{
 			(void)::close(s);
-			ret = false;
-		}
+			return false;
+		}	
+		if (::setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
+			throw SysError ("\n---setsockopt failed (Listener.cpp:132)", errno);
 		std::memset(&addr, 0, sizeof(addr));
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(_port);
@@ -153,29 +153,24 @@ void	Listener::onReadable(int fd)
 		std::memset(&peer, 0, sizeof(peer));
 		len = static_cast<socklen_t>(sizeof(peer));
 		client_fd = ::accept(_fd, reinterpret_cast<struct sockaddr*>(&peer), &len);
-
 		// No errno checks - just handle the return value
 		// In non-blocking mode, accept() returns -1 when no more connections
 		// are available (EAGAIN/EWOULDBLOCK) or on error. Either way, break
 		// and let poll notify us when there's a new connection.
 		if (client_fd < 0)
 			break;
-
-		if (!set_nonblock_fd(client_fd))
+		if (!set_nonblock_fd(client_fd, "Listener.cpp:163"))
 		{
 			(void)::close(client_fd);
 			continue;
 		}
-
 		if (!_conn_mgr || !_loop)
 		{
 			(void)::close(client_fd);
 			continue;
 		}
-
 		if (_server_configs.empty() && _server_cfg)
 			_server_configs.push_back(_server_cfg);
-
 		Connection	*conn = _conn_mgr->establish(client_fd, _server_name, _server_cfg, _server_configs, *_loop);
 		if (!conn)
 			(void)::close(client_fd);
