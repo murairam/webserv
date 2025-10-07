@@ -445,10 +445,10 @@ void	Connection::onReadable(int fd)
 
 void	Connection::dispatcher(void)
 {
-#ifdef _DEBUG2
-	std::cerr<<"\n=== CONNECTION DISPATCHER START ===\n"
-	<<"Input buffer size:"<<_inbuf.size()<<" bytes"
-	<<"\n---start of request---\n"<<_inbuf<<"\n---end of request---"<<std::endl;
+#ifdef _DEBUG
+std::string	preview = _inbuf.substr(0, std::min<std::string::size_type>(_outbuf.size(), 1024));
+
+	std::cerr<<"\n=== INBOUND HTTP REQUEST ===\n"<<"Input buffer size: "<<_inbuf.size()<<" bytes\n===begin of response===\n"<<preview<<((preview.size() < _outbuf.size()) ?"\n--- [truncated]" : "\n---end of request---")<<std::endl;
 #endif
 	_should_close = false;
 	if (_inbuf.empty())
@@ -927,18 +927,18 @@ void	Connection::handleDeleteRequest(const HttpRequest& request, const LocationC
 		return;
 	}
 
-	if (unlink(file_path.c_str()) == 0)
+	if (!std::remove(file_path.c_str()))
 	{
 #ifdef _DEBUG
 		std::cerr << "DEBUG: File deleted successfully" << std::endl;
 #endif
-		sendSimpleResponse(200, "text/plain", "File deleted successfully");
+		sendSimpleResponse(204);
 		return;
 	}
 
 	int err_code = errno;
 #ifdef _DEBUG
-	std::cerr << "DEBUG: unlink failed: " << std::strerror(err_code) << std::endl;
+	std::cerr << "DEBUG: std::remove failed: " << std::strerror(err_code) << std::endl;
 #endif
 	if (err_code == ENOENT)
 		sendErrorResponse(404);
@@ -985,7 +985,7 @@ bool	Connection::selectServerForRequest(const HttpRequest &request)
 }
 
 // Helper methods
-void	Connection::sendSimpleResponse(int code, const std::string &content_type, const std::string &body)
+void	Connection::sendSimpleResponse(int code, std::string content_type, std::string body)
 {
 #ifdef _DEBUG
 	std::cerr << "DEBUG: Sending simple response - Code: " << code
@@ -994,7 +994,7 @@ void	Connection::sendSimpleResponse(int code, const std::string &content_type, c
 	std::ostringstream oss;
 	oss << body.length();
 	std::string response =
-		"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\nDate: " + getTimeString() +"\r\nContent-Type: "  + content_type + "\r\n" + "Content-Length: " + oss.str() + "\r\n" + "Connection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + body;
+		"HTTP/1.1 " + intToString(code) + " " + CodePage::getInstance().getReason(code) + "\r\nDate: " + getTimeString() + (body.empty() ? std::string() : std::string("\r\nContent-Type: "  + content_type + "\r\n" + "Content-Length: " + oss.str())) + "\r\n" + "Connection: " + ((!_should_close) ? "keep-alive\r\n" : "close\r\n") + "\r\n" + body;
 	queueWrite(response);
 }
 

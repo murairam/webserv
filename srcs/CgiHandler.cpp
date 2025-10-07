@@ -32,7 +32,11 @@ const std::string &script, const LocationConfig *loc, Connection *owner)
 	{
 		std::string	fullpath = expandPath(_cgi_path);
 		if (!fullpath.empty() && fullpath != ".")
+#ifdef	_TESTER_VERSION
+			_cgi_path = getRealpath() + "/" + fullpath;
+#else
 			_cgi_path = fullpath;
+#endif
 	}
 	_env = req.toCgiEnvironment();
 #ifdef	_DEBUG

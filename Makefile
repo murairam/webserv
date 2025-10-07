@@ -33,7 +33,7 @@ OBJS			= $(SRCS:.cpp=.o)
 
 DEPS			= $(OBJS:.o=.d)
 
-.PHONY: all clean fclean re z cgi
+.PHONY: all clean fclean re
 
 all: $(NAME)
 
@@ -52,16 +52,5 @@ fclean: clean
 	-rm -f $(NAME)
 
 re: fclean all
-
-cgi:
-	-rm -f 1
-	$(CXX) $(CXXFLAGS) -o 1 fuck_cgi_tester.cpp
-	-rm -f fuck_cgi_tester.d
-	-rm -f fuck_cgi_tester.o
-
-z:
-	-$(MAKE) fclean
-	$(MAKE) -j$(nproc)
-	-$(MAKE) clean
 
 # Useful during evaluation: `strace -ff -e trace=close,socket,bind,socketpair,signal,fcntl,listen,accept,poll,epoll_create,epoll_wait,epoll_ctl,connect,open,read,send,recv -tt ./webserv ./assets/server_cfgs/GET_ONLY.cfg > strace_log.txt 2>&1`

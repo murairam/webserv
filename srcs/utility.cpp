@@ -344,3 +344,73 @@ std::string	expandPath(const std::string &path)
 	}
 	return (result);
 }
+
+std::string	findNameByInode(const std::string &parentPath, ino_t childIno)
+{
+	DIR	*parent_dir = ::opendir(parentPath.c_str());
+	if (!parent_dir)
+		throw std::runtime_error("Error: could not open directory: " + parentPath + std::strerror(errno));
+	struct dirent	*entry = ::readdir(parent_dir);
+	while (entry)
+	{
+		std::string	entryName(entry->d_name);
+		std::string	fullEntryPath = parentPath + "/" + entryName;
+		struct stat	entry_st;
+		if (!::stat(fullEntryPath.c_str(), &entry_st))
+		{
+			if (entry_st.st_ino == childIno)
+			{
+				(void)::closedir(parent_dir);
+				return (entryName);
+			}
+		}
+		entry = ::readdir(parent_dir);
+	}
+	(void)::closedir(parent_dir);
+	throw std::runtime_error("Error: Could not resolve the realpath");
+}
+
+std::string	getRealpath(void)
+{
+	try
+	{
+		std::vector<std::string>	components;
+		std::string	relativePath = ".";
+
+		while (1)
+		{
+			struct stat	dot_st;
+			struct stat	parent_st;
+
+			if (::stat(relativePath.c_str(), &dot_st))
+				throw std::runtime_error("Error: stat failed for " + relativePath + std::strerror(errno));
+			std::string	parentDir = relativePath + "/..";
+			if (::stat(parentDir.c_str(), &parent_st))
+				throw std::runtime_error("Error: stat failed for " + parentDir + std::strerror(errno));
+			if (dot_st.st_ino == parent_st.st_ino)
+				break;
+			
+			std::string	name = findNameByInode(parentDir, dot_st.st_ino);
+			components.push_back(name);
+			relativePath += "/..";
+		}
+		std::string	absolutePath;
+		if (components.empty())
+			absolutePath = "/";
+		else
+		{
+			ssize_t	i = static_cast<ssize_t>(components.size() - 1);
+			while (i > -1)
+				absolutePath += "/" + components[i--];
+		}
+		#ifdef	_DEBUG
+		std::cerr<<"AbsolutePath is resolved to : "<<absolutePath<<std::endl;
+		#endif
+		return (absolutePath);
+	}
+	catch (const std::exception &e)
+	{
+		std::cerr<<e.what()<<std::endl;
+		return (std::string());
+	}
+}

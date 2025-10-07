@@ -49,4 +49,6 @@ bool	extractFilename(const std::string &path, const std::string &locationPrefix,
 bool	matchPath(const std::string	&path, const std::string &prefix);
 std::string	expandPath(const std::string &path);
 bool	set_cloexec_fd(int fd, std::string position = std::string());
+std::string	getRealpath(void);
+std::string	findNameByInode(const std::string &parentPath, ino_t childIno);
 #endif

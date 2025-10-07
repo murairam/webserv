@@ -70,7 +70,7 @@ class	Connection: public IFdHandler
 		bool	serveFile(const std::string &file_path, int &err_code);
 		void	sendErrorResponse(int code);
 		bool	selectServerForRequest(const HttpRequest &request);
-		void	sendSimpleResponse(int code, const std::string &content_type, const std::string &body);
+		void	sendSimpleResponse(int code, std::string content_type = std::string(), std::string body = std::string());
 		void	sendRedirectResponse(int code, const std::string &location);
 		std::string	resolveRedirectLocation(const std::string &target, const HttpRequest &request) const;
 		void	sendDirectoryListing(const std::string &dir_path, const std::string &uri);
