@@ -241,12 +241,13 @@ bool	CgiHandler::execute(EventLoop &loop)
 		(void)::close(_stdout_pipe[1]);
 
 		char	*argv[3];
+
+		std::cerr<<"CGI executable path: "<<_cgi_path<<std::endl;
 		argv[0] = const_cast<char*>(_cgi_path.c_str());
 		argv[1] = const_cast<char*>(_script.c_str());
 		argv[2] = NULL;
 
 		char	**envp = buildEnv();
-		std::cerr<<"CGI executable path: "<<_cgi_path<<std::endl;
 		::execve(_cgi_path.c_str(), argv, envp);
 		std::cerr<<"\n---EXECVE RETURNED ! CGI FUCKED UP ! "<<std::strerror(errno)<<std::endl;
 		freeEnv(envp);
