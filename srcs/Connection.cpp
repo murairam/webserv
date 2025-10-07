@@ -446,9 +446,9 @@ void	Connection::onReadable(int fd)
 void	Connection::dispatcher(void)
 {
 #ifdef _DEBUG
-std::string	preview = _inbuf.substr(0, std::min<std::string::size_type>(_outbuf.size(), 1024));
+std::string	preview = _inbuf.substr(0, std::min<std::string::size_type>(_inbuf.size(), 1024));
 
-	std::cerr<<"\n=== INBOUND HTTP REQUEST ===\n"<<"Input buffer size: "<<_inbuf.size()<<" bytes\n===begin of response===\n"<<preview<<((preview.size() < _outbuf.size()) ?"\n--- [truncated]" : "\n---end of request---")<<std::endl;
+	std::cerr<<"\n=== INBOUND HTTP REQUEST ===\n"<<"Input buffer size: "<<_inbuf.size()<<" bytes\n---begin of request---\n"<<preview<<((preview.size() < _inbuf.size()) ?"\n--- [truncated]" : "---end of request---")<<std::endl;
 #endif
 	_should_close = false;
 	if (_inbuf.empty())
