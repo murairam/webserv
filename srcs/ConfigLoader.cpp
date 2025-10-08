@@ -17,14 +17,14 @@ ConfigLoader::ConfigLoader(void)
 : _path(), _servers(), _use_default_server(true), _server_count(0),
 _server_index(-1), _default_server(), _curr_server(), _curr_location(),
 _curr_endpoint(), _currline(0), _fatal_error(false), _root_is_folder(false),
-_used_endpoints()
+_location_start_line(0), _used_endpoints(), _used_server_names()
 {}
 
 ConfigLoader::ConfigLoader(std::string path)
 :_path(path), _servers(), _use_default_server(true),
 _server_count(0), _server_index(-1), _default_server(),
 _curr_server(), _curr_location(), _curr_endpoint(), _currline(0),
-_fatal_error(false), _root_is_folder(false), _used_endpoints()
+_fatal_error(false), _root_is_folder(false), _location_start_line(0), _used_endpoints(), _used_server_names()
 {
 	parse(path);
 }
@@ -33,6 +33,10 @@ void	ConfigLoader::parse(std::string path)
 {
 	_servers.clear();
 	_used_endpoints.clear();
+	_used_server_names.clear();
+	_currline = 0;
+	_fatal_error = false;
+	_location_start_line = 0;
 	enum context_enum
 	{
 		GLOBAL,
@@ -104,23 +108,34 @@ void	ConfigLoader::parse(std::string path)
 				context = GLOBAL;
 			}
 			else if (keyword == "server_name")
-			{
-				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
-				{
-					std::cerr<<path<<":"<<_currline<<": Server must have a name and must be terminated by a single ';'. trying up set up default server"<<std::endl;
-					goto fatal_exit;
-				}
-				temp_word.erase(temp_word.size() - 1);
-				if (temp_word.empty() || !std::isalnum(temp_word[temp_word.size() - 1]))
-				{
-					std::cerr<<path<<":"<<_currline<<": Invalid server name, it must be terminated by a letter or a digit, it also must be temrminated by a single ';'. trying to set up default server"<<std::endl;
-					goto fatal_exit;
-				}
-#ifdef	_DEBUG
-				std::cout<<"parser: server_name: "<<temp_word<<std::endl;
+                        {
+                                if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
+                                {
+                                        std::cerr<<path<<":"<<_currline<<": Server must have a name and must be terminated by a single ';'. trying up set up default server"<<std::endl;
+                                        goto fatal_exit;
+                                }
+                                temp_word.erase(temp_word.size() - 1);
+                                if (temp_word.empty() || !std::isalnum(temp_word[temp_word.size() - 1]))
+                                {
+                                        std::cerr<<path<<":"<<_currline<<": Invalid server name, it must be terminated by a letter or a digit, it also must be temrminated by a single ';'. trying to set up default server"<<std::endl;
+                                        goto fatal_exit;
+                                }
+                                if (!_curr_server.getServerName().empty())
+                                {
+                                        std::cerr<<path<<":"<<_currline<<": Duplicate 'server_name' directive within the same server block"<<std::endl;
+                                        goto fatal_exit;
+                                }
+                                if (_used_server_names.find(temp_word) != _used_server_names.end())
+                                {
+                                        std::cerr<<path<<":"<<_currline<<": Duplicate server_name '"<<temp_word<<"' detected"<<std::endl;
+                                        goto fatal_exit;
+                                }
+#ifdef  _DEBUG
+                                std::cout<<"parser: server_name: "<<temp_word<<std::endl;
 #endif
-				_curr_server.setServerName(temp_word);
-			}
+                                _curr_server.setServerName(temp_word);
+                                _used_server_names.insert(temp_word);
+                        }
 			else if (keyword == "listen")
 			{
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
@@ -224,6 +239,8 @@ void	ConfigLoader::parse(std::string path)
 #endif
 				if (err_page[err_page.size() - 1] == ';')
 					err_page.erase(err_page.size() - 1);
+				if (!validateErrorPage(err_page, path, _currline))
+					goto fatal_exit;
 				_curr_server.addErrorPage(err_page_code, err_page);
 			}
 			else if (keyword == "location")
@@ -236,6 +253,7 @@ void	ConfigLoader::parse(std::string path)
 				}
 				_curr_location = LocationConfig();
 				_curr_location.setPathPrefix(location_path);
+				_location_start_line = _currline;
 #ifdef	_DEBUG
 				std::cout<<"parser: location prefix: "<<location_path<<std::endl;
 #endif
@@ -284,6 +302,8 @@ void	ConfigLoader::parse(std::string path)
 				inside_bracket--;
 				if (inside_bracket == 1)
 				{
+					if (!validateLocationResources(_curr_location, path, _location_start_line))
+						goto fatal_exit;
 					_curr_server.addLocation(_curr_location);
 					context = SERVER;
 				}
@@ -357,13 +377,25 @@ void	ConfigLoader::parse(std::string path)
 					goto fatal_exit;
 				struct stat	alias_stat;
 				std::memset(&alias_stat, 0, sizeof(alias_stat));
-				if (stat(temp_word.c_str(), &alias_stat) < 0)
-				{
-					err_code = errno;
-					std::cerr<<path<<":"<<_currline<<": Unable to access alias target '"<<temp_word
-						<<"': "<<std::strerror(err_code)<<std::endl;
-					goto fatal_exit;
-				}
+                                if (stat(temp_word.c_str(), &alias_stat) < 0)
+                                {
+                                        err_code = errno;
+                                        std::cerr<<path<<":"<<_currline<<": Unable to access alias target '"<<temp_word
+                                                <<"': "<<std::strerror(err_code)<<std::endl;
+                                        goto fatal_exit;
+                                }
+                                if (!S_ISDIR(alias_stat.st_mode))
+                                {
+                                        std::cerr<<path<<":"<<_currline<<": Alias target '"<<temp_word<<"' is not a directory"<<std::endl;
+                                        goto fatal_exit;
+                                }
+                                if (access(temp_word.c_str(), R_OK | X_OK) != 0)
+                                {
+                                        err_code = errno;
+                                        std::cerr<<path<<":"<<_currline<<": Alias target '"<<temp_word<<"' is not accessible: "
+                                                <<std::strerror(err_code)<<std::endl;
+                                        goto fatal_exit;
+                                }
 				_curr_location.setAlias(temp_word);
 #ifdef	_DEBUG
 				std::cout<<"parser: alias: "<<temp_word<<std::endl;
@@ -394,27 +426,46 @@ void	ConfigLoader::parse(std::string path)
 #endif
 			}
 			else if (keyword == "cgi")
-			{
-				std::string	extension;
-				std::string	handler;
-				if (!(iss>>extension) || !(iss>>handler))
-				{
-					std::cerr<<path<<":"<<_currline<<": Unexpected token after 'cgi'"<<std::endl;
-					goto fatal_exit;
-				}
-				if (handler[handler.size() - 1] != ';')
-				{
-					std::cerr<<path<<":"<<_currline<<": Missing ';' at the end of 'cgi' directive"<<std::endl;
-					goto fatal_exit;
-				}
-				handler.erase(handler.size() - 1);
-				if (!extension.empty() && extension[0] != '.')
-					extension.insert(extension.begin(), '.');
-				_curr_location.addCgiHandler(extension, handler);
-#ifdef	_DEBUG
-				std::cout<<"parser: cgi handler for "<<extension<<": "<<handler<<std::endl;
+                        {
+                                std::string     extension;
+                                std::string     handler;
+                                if (!(iss>>extension) || !(iss>>handler))
+                                {
+                                        std::cerr<<path<<":"<<_currline<<": Unexpected token after 'cgi'"<<std::endl;
+                                        goto fatal_exit;
+                                }
+                                if (handler[handler.size() - 1] != ';')
+                                {
+                                        std::cerr<<path<<":"<<_currline<<": Missing ';' at the end of 'cgi' directive"<<std::endl;
+                                        goto fatal_exit;
+                                }
+                                handler.erase(handler.size() - 1);
+                                if (!extension.empty() && extension[0] != '.')
+                                        extension.insert(extension.begin(), '.');
+                                struct stat     cgi_stat;
+                                std::memset(&cgi_stat, 0, sizeof(cgi_stat));
+                                if (stat(handler.c_str(), &cgi_stat) < 0)
+                                {
+                                        err_code = errno;
+                                        std::cerr<<path<<":"<<_currline<<": Unable to access CGI executable '"<<handler<<"': "<<std::strerror(err_code)<<std::endl;
+                                        goto fatal_exit;
+                                }
+                                if (!S_ISREG(cgi_stat.st_mode))
+                                {
+                                        std::cerr<<path<<":"<<_currline<<": CGI executable '"<<handler<<"' is not a regular file"<<std::endl;
+                                        goto fatal_exit;
+                                }
+                                if (access(handler.c_str(), X_OK) != 0)
+                                {
+                                        err_code = errno;
+                                        std::cerr<<path<<":"<<_currline<<": CGI executable '"<<handler<<"' is not executable: "<<std::strerror(err_code)<<std::endl;
+                                        goto fatal_exit;
+                                }
+                                _curr_location.addCgiHandler(extension, handler);
+#ifdef  _DEBUG
+                                std::cout<<"parser: cgi handler for "<<extension<<": "<<handler<<std::endl;
 #endif
-			}
+                        }
 			else if (keyword == "client_max_body_size")
 			{
 				if (!(iss>>temp_word) || temp_word[temp_word.size() - 1] != ';')
@@ -456,6 +507,125 @@ void	ConfigLoader::parse(std::string path)
 	}
 }
 
+bool    ConfigLoader::validateErrorPage(const std::string &page, const std::string &config_path, int line)
+{
+        if (page.empty())
+        {
+                std::cerr<<config_path<<":"<<line<<": Error page path cannot be empty"<<std::endl;
+                return (false);
+        }
+        struct stat     file_stat;
+        std::memset(&file_stat, 0, sizeof(file_stat));
+        if (stat(page.c_str(), &file_stat) < 0)
+        {
+                int     err_code = errno;
+                std::cerr<<config_path<<":"<<line<<": Unable to access error page '"<<page<<"': "<<std::strerror(err_code)<<std::endl;
+                return (false);
+        }
+        if (!S_ISREG(file_stat.st_mode))
+        {
+                std::cerr<<config_path<<":"<<line<<": Error page '"<<page<<"' is not a regular file"<<std::endl;
+                return (false);
+        }
+        if (access(page.c_str(), R_OK) != 0)
+        {
+                int     err_code = errno;
+                std::cerr<<config_path<<":"<<line<<": Error page '"<<page<<"' is not readable: "<<std::strerror(err_code)<<std::endl;
+                return (false);
+        }
+        return (true);
+}
+
+bool    ConfigLoader::validateLocationResources(const LocationConfig &loc, const std::string &config_path, int line)
+{
+        const std::string       &alias = loc.getAlias();
+        struct stat     resource_stat;
+        std::memset(&resource_stat, 0, sizeof(resource_stat));
+        if (!alias.empty())
+        {
+                if (stat(alias.c_str(), &resource_stat) < 0)
+                {
+                        int     err_code = errno;
+                        std::cerr<<config_path<<":"<<line<<": Unable to access alias target '"<<alias<<"': "<<std::strerror(err_code)<<std::endl;
+                        return (false);
+                }
+                if (!S_ISDIR(resource_stat.st_mode))
+                {
+                        std::cerr<<config_path<<":"<<line<<": Alias target '"<<alias<<"' is not a directory"<<std::endl;
+                        return (false);
+                }
+                if (access(alias.c_str(), R_OK | X_OK) != 0)
+                {
+                        int     err_code = errno;
+                        std::cerr<<config_path<<":"<<line<<": Alias target '"<<alias<<"' is not accessible: "<<std::strerror(err_code)<<std::endl;
+                        return (false);
+                }
+        }
+        std::string     base_path = alias.empty() ? std::string(".") : alias;
+        const std::vector<std::string>    &index_files = loc.getIndexFiles();
+        for (std::vector<std::string>::const_iterator it = index_files.begin(); it != index_files.end(); ++it)
+        {
+                const std::string &index = *it;
+                if (index.empty())
+                        continue;
+                std::string     index_path = index;
+                if (index[0] != '/')
+                {
+                        if (!base_path.empty() && base_path != ".")
+                        {
+                                index_path = base_path;
+                                if (!index_path.empty() && index_path[index_path.size() - 1] != '/')
+                                        index_path += '/';
+                                index_path += index;
+                        }
+                }
+                std::memset(&resource_stat, 0, sizeof(resource_stat));
+                if (stat(index_path.c_str(), &resource_stat) < 0)
+                {
+                        int     err_code = errno;
+                        std::cerr<<config_path<<":"<<line<<": Unable to access index file '"<<index_path<<"': "<<std::strerror(err_code)<<std::endl;
+                        return (false);
+                }
+                if (!S_ISREG(resource_stat.st_mode))
+                {
+                        std::cerr<<config_path<<":"<<line<<": Index file '"<<index_path<<"' is not a regular file"<<std::endl;
+                        return (false);
+                }
+                if (access(index_path.c_str(), R_OK) != 0)
+                {
+                        int     err_code = errno;
+                        std::cerr<<config_path<<":"<<line<<": Index file '"<<index_path<<"' is not readable: "<<std::strerror(err_code)<<std::endl;
+                        return (false);
+                }
+        }
+        const std::map<std::string, std::string> &cgi_handlers = loc.getCgiHandlers();
+        for (std::map<std::string, std::string>::const_iterator it = cgi_handlers.begin(); it != cgi_handlers.end(); ++it)
+        {
+                const std::string &handler = it->second;
+                if (handler.empty())
+                        continue;
+                std::memset(&resource_stat, 0, sizeof(resource_stat));
+                if (stat(handler.c_str(), &resource_stat) < 0)
+                {
+                        int     err_code = errno;
+                        std::cerr<<config_path<<":"<<line<<": Unable to access CGI executable '"<<handler<<"': "<<std::strerror(err_code)<<std::endl;
+                        return (false);
+                }
+                if (!S_ISREG(resource_stat.st_mode))
+                {
+                        std::cerr<<config_path<<":"<<line<<": CGI executable '"<<handler<<"' is not a regular file"<<std::endl;
+                        return (false);
+                }
+                if (access(handler.c_str(), X_OK) != 0)
+                {
+                        int     err_code = errno;
+                        std::cerr<<config_path<<":"<<line<<": CGI executable '"<<handler<<"' is not executable: "<<std::strerror(err_code)<<std::endl;
+                        return (false);
+                }
+        }
+        return (true);
+}
+
 ConfigLoader::ConfigLoader(const ConfigLoader &other)
 :_path(other._path), _servers(other._servers),
 _use_default_server(other._use_default_server),
@@ -463,7 +633,8 @@ _server_count(other._server_count), _server_index(other._server_index),
 _default_server(other._default_server), _curr_server(other._curr_server),
 _curr_location(other._curr_location), _curr_endpoint(other._curr_endpoint),
 _currline(other._currline), _fatal_error(other._fatal_error),
-_root_is_folder(other._root_is_folder), _used_endpoints()
+_root_is_folder(other._root_is_folder), _location_start_line(other._location_start_line),
+_used_endpoints(other._used_endpoints), _used_server_names(other._used_server_names)
 {}
 
 ConfigLoader	&ConfigLoader::operator=(const ConfigLoader &other)
@@ -482,7 +653,9 @@ ConfigLoader	&ConfigLoader::operator=(const ConfigLoader &other)
 		_currline = other._currline;
 		_fatal_error = other._fatal_error;
 		_root_is_folder = other._root_is_folder;
+		_location_start_line = other._location_start_line;
 		_used_endpoints = other._used_endpoints;
+		_used_server_names = other._used_server_names;
 	}
 	return (*this);
 }

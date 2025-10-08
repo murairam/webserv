@@ -24,7 +24,8 @@ const std::string &script, const LocationConfig *loc, Connection *owner)
 : _pid(-1), _output(), _body(req.getBody()), _body_sent(0), _headers_parsed(false),
   _done(false), _status(200), _headers(), _response_body(),
   _body_start(0), _loop(NULL),
-  _start(std::time(NULL)), _cgi_path(cgi), _script(script), _workdir(), _env(), _owner(owner)
+  _start(std::time(NULL)), _cgi_path(cgi), _script(script), _workdir(), _env(), _owner(owner),
+  _failed(false), _exit_status_recorded(false), _exit_status(0)
 {
 	_stdin_pipe[0] = _stdin_pipe[1] = -1;
 	_stdout_pipe[0] = _stdout_pipe[1] = -1;
@@ -127,10 +128,16 @@ CgiHandler::~CgiHandler(void)
 			(void)::kill(_pid, SIGTERM);
 			(void)::waitpid(_pid, &status, WNOHANG);
 			(void)::kill(_pid, SIGKILL);
+			markFailure();
 		}
+		else if (r == _pid)
+			recordExitStatus(status);
+		else if (r < 0)
+			markFailure();
 		_pid = -1;
 	}
 }
+
 
 void	CgiHandler::closePipes(void)
 {
@@ -189,6 +196,21 @@ void	CgiHandler::freeEnv(char **envp) const
 	}
 	delete[] envp;
 	envp = NULL;
+}
+
+void    CgiHandler::recordExitStatus(int status)
+{
+	if (_exit_status_recorded)
+		return;
+	_exit_status = status;
+	_exit_status_recorded = true;
+	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+		_failed = true;
+}
+
+void    CgiHandler::markFailure(void)
+{
+	_failed = true;
 }
 
 bool	CgiHandler::execute(EventLoop &loop)
@@ -293,14 +315,14 @@ void	CgiHandler::onReadable(int fd)
 		return;
 
 	char	buf[655360];
-	ssize_t	n = ::read(fd, buf, sizeof(buf));
+	ssize_t n = ::read(fd, buf, sizeof(buf));
 
 	if (n > 0)
 	{
 		_output.append(buf, static_cast<size_t>(n));
-#ifdef	_DEBUG_CGI
-std::cerr<<"DEBUG: CGI stdout read "<<n
-<<" bytes (total "<<_output.size()<<")"<<std::endl;
+#ifdef  _DEBUG_CGI
+		std::cerr<<"DEBUG: CGI stdout read "<<n
+				<<" bytes (total "<<_output.size()<<")"<<std::endl;
 #endif
 		if (!_headers_parsed)
 			parseHeaders();
@@ -312,7 +334,12 @@ std::cerr<<"DEBUG: CGI stdout read "<<n
 			_loop->remove(fd);
 		(void)::close(_stdout_pipe[0]);
 		_stdout_pipe[0] = -1;
+		markFailure();
 		_done = true;
+		if (_owner)
+			_owner->markCgiReady();
+		if (_loop)
+			_loop->notify();
 		return;
 	}
 
@@ -325,19 +352,30 @@ std::cerr<<"DEBUG: CGI stdout read "<<n
 		parseHeaders();
 	if (_headers_parsed)
 		_response_body = _output.substr(_body_start);
-#ifdef	_DEBUG
+#ifdef  _DEBUG
 	std::cerr<<"DEBUG: CGI output size: "<<_output.size()<<std::endl;
 #endif
 	if (_pid > 0)
 	{
 		int		status = 0;
 		pid_t	r = ::waitpid(_pid, &status, WNOHANG);
-		if (r == _pid || r < 0)
+		if (r == _pid)
+		{
+			recordExitStatus(status);
 			_pid = -1;
+		}
+		else if (r < 0)
+		{
+			markFailure();
+			_pid = -1;
+		}
 	}
 	_done = true;
+	if (_owner)
+		_owner->markCgiReady();
+	if (_loop)
+		_loop->notify();
 }
-
 void	CgiHandler::onWritable(int fd)
 {
 	if (fd != _stdin_pipe[1])
@@ -392,6 +430,7 @@ void 	CgiHandler::onError(int fd)
 	(void)fd;
 	removeFromEventLoop();
 	closePipes();
+	markFailure();
 	if (_pid > 0)
 	{
 		(void)::waitpid(_pid, NULL, WNOHANG);
@@ -435,8 +474,13 @@ void	CgiHandler::onHangup(int fd)
 	{
 		int	status = 0;
 		pid_t	r = ::waitpid(_pid, &status, WNOHANG);
-		if (r != _pid)
+		if (r == _pid)
+			recordExitStatus(status);
+		else
+		{
+			markFailure();
 			(void)::kill(_pid, SIGKILL);
+		}
 		_pid = -1;
 #ifdef	_DEBUG
 		if (r < 0)
@@ -470,6 +514,7 @@ void	CgiHandler::onTick(int fd)
 			(void)::kill(_pid, SIGKILL);
 			_pid = -1;
 		}
+		markFailure();
 		_done = true;
 	}
 }
@@ -531,6 +576,11 @@ bool CgiHandler::isDone(void) const
 bool CgiHandler::isTimeout(void) const
 {
 	return (std::time(NULL) - _start) > 300;
+}
+
+bool    CgiHandler::hasFailed(void) const
+{
+	return (_failed);
 }
 
 std::string	CgiHandler::getResponse(void) const

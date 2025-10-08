@@ -84,10 +84,6 @@ std::string	LocationConfig::getCgi(std::string ext) const
 	std::map<std::string, std::string>::const_iterator it = _cgi_handlers.find(ext);
 	if (it != _cgi_handlers.end())
 		return (it->second);
-	if (ext == ".php")
-		return (std::string("/usr/bin/php-cgi"));
-	if (ext == ".rb")
-		return (std::string("/usr/bin/ruby"));
 	return (std::string());
 }
 
@@ -150,6 +146,11 @@ void	LocationConfig::setPriority(int priority)
 void	LocationConfig::addCgiHandler(const std::string &ext, const std::string &program)
 {
 	_cgi_handlers[ext] = program;
+}
+
+const std::map<std::string, std::string>  &LocationConfig::getCgiHandlers(void) const
+{
+	return (_cgi_handlers);
 }
 
 #ifdef	_DEBUG

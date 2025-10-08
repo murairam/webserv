@@ -43,11 +43,16 @@ class	CgiHandler: public IFdHandler
 		std::string	_workdir;
 		std::map<std::string,std::string>	_env;
 		Connection	*_owner;
+		bool		_failed;
+		bool		_exit_status_recorded;
+		int			_exit_status;
 
 		void	closePipes(void);
 		char	**buildEnv(void) const;
 		void	freeEnv(char **envp) const;
 		bool	parseHeaders(void);
+		void	recordExitStatus(int status);
+		void	markFailure(void);
 
 		CgiHandler(void);
 		CgiHandler(const CgiHandler &other);
@@ -61,6 +66,7 @@ class	CgiHandler: public IFdHandler
 		bool	execute(EventLoop &loop);
 		bool	isDone(void) const;
 		bool	isTimeout(void) const;
+		bool	hasFailed(void) const;
 		std::string	getResponse(void) const;
 		void	removeFromEventLoop(void);
 

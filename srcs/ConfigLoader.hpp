@@ -35,7 +35,14 @@ class	ConfigLoader
 		int							_currline;
 		bool						_fatal_error;
 		bool						_root_is_folder;
+		int							_location_start_line;
 		std::set<std::pair<std::string,int> >	_used_endpoints;
+		std::set<std::string>		_used_server_names;
+
+		bool	validateLocationResources(const LocationConfig &loc,
+				const std::string &config_path, int line);
+		bool	validateErrorPage(const std::string &path,
+				const std::string &config_path, int line);
 
 		void	parse(std::string path);
 

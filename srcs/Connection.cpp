@@ -559,6 +559,18 @@ void Connection::handleParsedRequest(const HttpRequest& request)
 		return;
 	}
 
+        if (_cgi)
+        {
+                if (_cgi->hasFailed())
+                {
+                        _cgi->removeFromEventLoop();
+                        delete _cgi;
+                        _cgi = NULL;
+                        sendErrorResponse(500);
+                        return;
+                }
+        }
+
 #ifdef _DEBUG
 std::cerr << "DEBUG: Looking for location match for: " << request.getPath() << std::endl;
 std::cerr << "DEBUG: About to call matchLocation..." << std::endl;
@@ -1146,6 +1158,15 @@ void	Connection::checkCgi(void)
 #ifdef _DEBUG
 		std::cerr << "DEBUG: CGI timeout detected" << std::endl;
 #endif
+		_cgi->removeFromEventLoop();
+		delete _cgi;
+		_cgi = NULL;
+		sendErrorResponse(500);
+		return;
+	}
+
+	if (_cgi->hasFailed())
+	{
 		_cgi->removeFromEventLoop();
 		delete _cgi;
 		_cgi = NULL;

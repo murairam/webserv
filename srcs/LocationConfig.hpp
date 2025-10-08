@@ -57,6 +57,7 @@ class	LocationConfig
 		void	setClientBodyLimit(long limit);
 		void	setPriority(int priority);
 		void	addCgiHandler(const std::string &ext, const std::string &program);
+		const std::map<std::string, std::string> &getCgiHandlers(void) const;
 
 #ifdef	_DEBUG
 		void	debug(void) const;
